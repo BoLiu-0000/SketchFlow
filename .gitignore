@@ -1,0 +1,22 @@
+# Dependencies and generated output
+site/node_modules/
+site/dist/
+site/.next/
+site/.vinext/
+site/out/
+site/.wrangler/
+site/outputs/
+site/coverage/
+
+# Local and temporary files
+work/
+.DS_Store
+*.log
+*.pem
+.env*
+
+# Tool caches
+.pnp
+.pnp.*
+.yarn/
+
