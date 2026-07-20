@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ViewName = "创作" | "项目" | "灵感" | "导出";
+type ThemeMode = "light" | "dark";
 
 const recentProjects = [
   { name: "模块化通勤灯", meta: "8 个版本 · 刚刚", tone: "orange" },
@@ -34,6 +35,8 @@ const inspirationPosts = [
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewName>("创作");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>("light");
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState("");
@@ -43,6 +46,22 @@ export default function Home() {
   const [projectFilter, setProjectFilter] = useState("全部");
   const [inspirationFilter, setInspirationFilter] = useState("为你推荐");
   const [highlightedProject, setHighlightedProject] = useState("");
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("sketchflow-theme");
+    const nextTheme: ThemeMode = savedTheme === "dark" ? "dark" : "light";
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+  }, []);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setProfileOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [profileOpen]);
 
   const promptCount = useMemo(() => prompt.trim().length, [prompt]);
   const visibleProjects = projectFilter === "全部"
@@ -93,6 +112,12 @@ export default function Home() {
     window.setTimeout(() => setHighlightedProject(""), 2400);
   };
 
+  const changeTheme = (nextTheme: ThemeMode) => {
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    window.localStorage.setItem("sketchflow-theme", nextTheme);
+  };
+
   return (
     <main className="app-page">
       <section className="app-shell">
@@ -115,9 +140,14 @@ export default function Home() {
             ))}
           </nav>
 
-          <button className="profile" onClick={() => notify("个人中心将在后续版本接入")}>
-            <span className="avatar">林</span>
-            <span><b>林知夏</b><small>个人创作空间</small></span>
+          <button
+            className="profile"
+            onClick={() => setProfileOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={profileOpen}
+          >
+            <span className="avatar">用</span>
+            <span><b>用户名称</b><small>个人中心</small></span>
             <span className="profile-more">•••</span>
           </button>
         </aside>
@@ -166,7 +196,18 @@ export default function Home() {
               <span>{icon}</span>{label}
             </button>
           ))}
+          <button onClick={() => setProfileOpen(true)} aria-label="打开个人中心">
+            <span>●</span>我的
+          </button>
         </nav>
+
+        <ProfileCenter
+          open={profileOpen}
+          theme={theme}
+          onClose={() => setProfileOpen(false)}
+          onThemeChange={changeTheme}
+          notify={notify}
+        />
       </section>
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
@@ -451,6 +492,104 @@ function InspirationView({
         <div className="feed-end"><span>✦</span>继续向下，灵感还在生长</div>
       </div>
     </div>
+  );
+}
+
+const profileItems = [
+  { icon: "↗", title: "导出记录", detail: "查看与管理历史导出文件" },
+  { icon: "✦", title: "AI 使用额度", detail: "本月剩余 76% · 760 次" },
+  { icon: "◎", title: "知识助手偏好", detail: "语言、回答风格与专业领域" },
+  { icon: "⌘", title: "账号设置", detail: "个人资料、安全与登录方式" },
+  { icon: "◇", title: "数据与隐私设置", detail: "数据授权、存储与使用范围" },
+];
+
+function ProfileCenter({
+  open,
+  theme,
+  onClose,
+  onThemeChange,
+  notify,
+}: {
+  open: boolean;
+  theme: ThemeMode;
+  onClose: () => void;
+  onThemeChange: (theme: ThemeMode) => void;
+  notify: (message: string) => void;
+}) {
+  return (
+    <>
+      <button
+        className={`profile-backdrop ${open ? "open" : ""}`}
+        aria-label="关闭个人中心"
+        tabIndex={open ? 0 : -1}
+        onClick={onClose}
+      />
+      <aside
+        className={`profile-drawer ${open ? "open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!open}
+        aria-label="个人中心"
+      >
+        <header className="profile-drawer-header">
+          <div>
+            <span className="drawer-eyebrow">PERSONAL CENTER</span>
+            <h2>个人中心</h2>
+          </div>
+          <button className="drawer-close" onClick={onClose} aria-label="关闭个人中心">×</button>
+        </header>
+
+        <section className="profile-identity">
+          <span className="profile-avatar-large">用</span>
+          <div>
+            <b>用户名称</b>
+            <small>SketchFlow 创作者</small>
+          </div>
+          <span className="member-chip">创作会员</span>
+        </section>
+
+        <section className="theme-card">
+          <div className="theme-card-copy">
+            <span className="theme-icon">{theme === "light" ? "☼" : "◐"}</span>
+            <div><b>界面风格</b><small>选择更舒适的创作环境</small></div>
+          </div>
+          <div className="theme-switch" role="group" aria-label="界面风格">
+            <button
+              className={theme === "light" ? "active" : ""}
+              aria-pressed={theme === "light"}
+              onClick={() => onThemeChange("light")}
+            >
+              <span>☼</span> 浅色
+            </button>
+            <button
+              className={theme === "dark" ? "active" : ""}
+              aria-pressed={theme === "dark"}
+              onClick={() => onThemeChange("dark")}
+            >
+              <span>◐</span> 深色
+            </button>
+          </div>
+        </section>
+
+        <nav className="profile-menu" aria-label="个人中心功能">
+          {profileItems.map((item) => (
+            <button
+              key={item.title}
+              onClick={() => notify(`${item.title}功能已打开`)}
+            >
+              <span className="profile-menu-icon">{item.icon}</span>
+              <span><b>{item.title}</b><small>{item.detail}</small></span>
+              <i>›</i>
+            </button>
+          ))}
+        </nav>
+
+        <footer className="profile-drawer-footer">
+          <span><i /> 服务状态正常</span>
+          <button onClick={() => notify("已退出当前账号")}>退出登录</button>
+        </footer>
+      </aside>
+    </>
   );
 }
 
