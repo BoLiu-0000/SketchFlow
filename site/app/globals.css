@@ -293,6 +293,12 @@ textarea:focus-visible {
   background: #f7f6f3;
 }
 
+.search-btn {
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .notification {
   position: relative;
   font-size: 17px;
@@ -450,6 +456,11 @@ textarea:focus-visible {
 
 .input-tools button:hover {
   background: var(--lime-soft);
+}
+
+.input-tools .voice-input {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .prompt-footer > span {
@@ -614,8 +625,9 @@ textarea:focus-visible {
 
 .project-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 13px;
+  grid-template-columns: repeat(3, minmax(0, 260px));
+  justify-content: start;
+  gap: 16px;
   margin-top: 15px;
 }
 
@@ -625,7 +637,7 @@ textarea:focus-visible {
   padding: 7px 7px 13px;
   overflow: hidden;
   border: 1px solid rgba(226, 224, 218, 0.9);
-  border-radius: 20px;
+  border-radius: 16px;
   background: white;
   cursor: pointer;
   text-align: left;
@@ -638,11 +650,11 @@ textarea:focus-visible {
 }
 
 .project-visual {
-  height: 110px;
+  height: 96px;
   display: block;
   position: relative;
   overflow: hidden;
-  border-radius: 15px;
+  border-radius: 11px;
   background: #d7d4ce;
 }
 

@@ -81,7 +81,7 @@ export default function Home() {
               <h1>把刚才的灵感，变成看得见的方案。</h1>
             </div>
             <div className="top-actions">
-              <button className="icon-btn" aria-label="搜索" onClick={() => notify("搜索将在下一版接入")}>
+              <button className="icon-btn search-btn" aria-label="搜索" onClick={() => notify("搜索将在下一版接入")}>
                 ⌕
               </button>
               <button className="icon-btn notification" aria-label="通知" onClick={() => notify("暂无新通知")}>
@@ -114,7 +114,7 @@ export default function Home() {
                     <div className="input-tools">
                       <button aria-label="添加图片" onClick={() => notify("图片上传将在下一版接入")}>▧</button>
                       <button aria-label="拍照" onClick={() => notify("相机将在小程序版接入")}>◉</button>
-                      <button aria-label="语音输入" onClick={() => notify("语音输入将在后续版本接入")}>⌁</button>
+                      <button className="voice-input" aria-label="语音输入" onClick={() => notify("语音输入将在后续版本接入")}>🎙︎</button>
                     </div>
                     <span>{promptCount}/240</span>
                   </div>
