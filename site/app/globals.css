@@ -55,7 +55,7 @@ textarea:focus-visible {
 
 .app-shell {
   width: min(1480px, 100%);
-  min-height: calc(100vh - 56px);
+  min-height: auto;
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   position: relative;
@@ -82,15 +82,49 @@ textarea:focus-visible {
 }
 
 .brand-mark {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 13px 13px 13px 5px;
-  background: var(--ink);
-  color: var(--lime);
-  font: 800 17px/1 Georgia, serif;
-  transform: rotate(-4deg);
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(229, 227, 222, 0.95);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, #f7f6f3);
+  box-shadow:
+    0 7px 18px rgba(32, 33, 38, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.brand-mark::before,
+.brand-mark::after {
+  content: "";
+  width: 22px;
+  height: 9px;
+  position: absolute;
+  left: 9px;
+  border-radius: 3px;
+  background: #17181b;
+  transform: skewY(-32deg) rotate(-2deg);
+}
+
+.brand-mark::before {
+  top: 9px;
+}
+
+.brand-mark::after {
+  bottom: 9px;
+}
+
+.brand-mark-accent {
+  width: 23px;
+  height: 10px;
+  position: absolute;
+  left: 10px;
+  top: 16px;
+  z-index: 1;
+  background: #c8f04f;
+  clip-path: polygon(0 48%, 47% 0, 100% 42%, 52% 100%);
+  transform: rotate(-2deg);
 }
 
 .brand-copy {
@@ -132,8 +166,19 @@ textarea:focus-visible {
 }
 
 .nav-item span {
-  width: 22px;
-  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #e4e2dd;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #ffffff, #efeeea);
+  box-shadow:
+    0 4px 10px rgba(32, 33, 38, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  color: #4f5157;
+  font-size: 15px;
   text-align: center;
 }
 
@@ -150,7 +195,12 @@ textarea:focus-visible {
 }
 
 .nav-item.active span {
-  color: var(--lime);
+  border-color: rgba(194, 224, 76, 0.72);
+  background: linear-gradient(145deg, #e8fa98, #c7ed4d);
+  box-shadow:
+    0 5px 13px rgba(175, 207, 58, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  color: var(--ink);
 }
 
 .rail-tip {
@@ -236,7 +286,7 @@ textarea:focus-visible {
 
 .workspace {
   min-width: 0;
-  padding: 26px 30px 30px;
+  padding: 26px 30px 24px;
 }
 
 .topbar,
@@ -363,8 +413,8 @@ textarea:focus-visible {
   grid-template-areas:
     "prompt ai"
     "recent recent";
-  gap: 22px;
-  margin-top: 26px;
+  gap: 18px 22px;
+  margin-top: 22px;
 }
 
 .creator-column,
@@ -1043,7 +1093,7 @@ textarea:focus-visible {
   }
 
   .app-shell {
-    min-height: calc(100vh - 32px);
+    min-height: auto;
     grid-template-columns: 82px minmax(0, 1fr);
     border-radius: 30px;
   }
@@ -1072,7 +1122,7 @@ textarea:focus-visible {
   }
 
   .nav-item span {
-    font-size: 18px;
+    font-size: 15px;
   }
 
   .rail-tip,

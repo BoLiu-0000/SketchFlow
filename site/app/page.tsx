@@ -36,7 +36,9 @@ export default function Home() {
       <section className="app-shell">
         <aside className="rail">
           <div className="brand" aria-label="灵图 SketchFlow">
-            <span className="brand-mark">S</span>
+            <span className="brand-mark" aria-hidden="true">
+              <span className="brand-mark-accent" />
+            </span>
             <span className="brand-copy">
               <b>灵图</b>
               <small>SketchFlow</small>
@@ -47,7 +49,7 @@ export default function Home() {
             {[
               ["创作", "✦"],
               ["项目", "▦"],
-              ["灵感", "◌"],
+              ["灵感", "◉"],
               ["导出", "↗"],
             ].map(([label, icon]) => (
               <button
@@ -100,7 +102,6 @@ export default function Home() {
                   <div>
                     <h2>你想设计什么？</h2>
                   </div>
-                  <span className="autosave">● 已自动保存</span>
                 </div>
 
                 <div className="prompt-box">
