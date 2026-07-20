@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 
 type ViewName = "创作" | "项目" | "灵感" | "导出";
 type ThemeMode = "light" | "dark";
+type AvatarMode = "default" | "camera" | "inspiration";
+type CreationReference = {
+  id: string;
+  title: string;
+  tone: string;
+  source: "默认" | "相册" | "灵感";
+  previewUrl?: string;
+};
 
 const recentProjects = [
   { name: "模块化通勤灯", meta: "8 个版本 · 刚刚", tone: "orange" },
@@ -49,6 +57,11 @@ export default function Home() {
   const [inspirationFilter, setInspirationFilter] = useState("为你推荐");
   const [highlightedProject, setHighlightedProject] = useState("");
   const [styleReferences, setStyleReferences] = useState<(typeof inspirationPosts)[number][]>([]);
+  const [creationReferences, setCreationReferences] = useState<CreationReference[]>([
+    { id: "starter-reference", title: "折叠灯参考", tone: "orange", source: "默认" },
+  ]);
+  const [avatarMode, setAvatarMode] = useState<AvatarMode>("default");
+  const [avatarPreview, setAvatarPreview] = useState("");
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -124,11 +137,14 @@ export default function Home() {
     window.localStorage.setItem("sketchflow-theme", nextTheme);
   };
 
-  const addInspirationToPrompt = (post: (typeof inspirationPosts)[number]) => {
-    const reference = `参考灵感「${post.title}」（${post.tag}）：`;
-    setPrompt((current) => `${current}${current ? "\n" : ""}${reference}`.slice(0, 240));
+  const addInspirationToCreation = (post: (typeof inspirationPosts)[number]) => {
+    setCreationReferences((current) =>
+      current.some((item) => item.title === post.title)
+        ? current
+        : [...current, { id: `inspiration-${post.title}`, title: post.title, tone: post.tone, source: "灵感" }],
+    );
     switchView("创作");
-    notify(`已将「${post.title}」添加到内容输入框`);
+    notify(`已将「${post.title}」添加到创作内容参考`);
   };
 
   const addStyleReference = (post: (typeof inspirationPosts)[number]) => {
@@ -136,6 +152,30 @@ export default function Home() {
       current.some((item) => item.title === post.title) ? current : [...current, post],
     );
     notify(`已将「${post.title}」添加为导出风格参考`);
+  };
+
+  const addAlbumReference = (file: File) => {
+    const previewUrl = URL.createObjectURL(file);
+    setCreationReferences((current) => [
+      ...current,
+      { id: `album-${Date.now()}`, title: file.name, tone: "album", source: "相册", previewUrl },
+    ]);
+    notify("已从相册添加创作参考");
+  };
+
+  const removeCreationReference = (id: string) => {
+    setCreationReferences((current) => {
+      const removed = current.find((item) => item.id === id);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return current.filter((item) => item.id !== id);
+    });
+  };
+
+  const updateAvatarFromFile = (file: File) => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarMode("default");
+    notify("头像已从相册更新");
   };
 
   return (
@@ -166,7 +206,7 @@ export default function Home() {
             aria-haspopup="dialog"
             aria-expanded={profileOpen}
           >
-            <span className="avatar">用</span>
+            <AvatarVisual className="avatar" mode={avatarMode} previewUrl={avatarPreview} />
             <span><b>用户名称</b><small>个人中心</small></span>
             <span className="profile-more">•••</span>
           </button>
@@ -183,6 +223,13 @@ export default function Home() {
               notify={notify}
               onShowProjects={() => switchView("项目")}
               onShowProject={showProject}
+              references={creationReferences}
+              onRemoveReference={removeCreationReference}
+              onAddAlbumReference={addAlbumReference}
+              onOpenInspiration={() => {
+                switchView("灵感");
+                notify("点击灵感卡片底部的＋，添加为创作内容参考");
+              }}
             />
           )}
           {activeView === "项目" && (
@@ -204,7 +251,7 @@ export default function Home() {
               likedPosts={likedPosts}
               toggleSavedPost={toggleSavedPost}
               toggleLikedPost={toggleLikedPost}
-              onAddToCreator={addInspirationToPrompt}
+              onAddToCreator={addInspirationToCreation}
               onAddToStyleReference={addStyleReference}
               notify={notify}
             />
@@ -235,13 +282,40 @@ export default function Home() {
         <ProfileCenter
           open={profileOpen}
           theme={theme}
+          avatarMode={avatarMode}
+          avatarPreview={avatarPreview}
           onClose={() => setProfileOpen(false)}
           onThemeChange={changeTheme}
+          onAvatarModeChange={(mode) => {
+            setAvatarPreview("");
+            setAvatarMode(mode);
+          }}
+          onAvatarFile={updateAvatarFromFile}
           notify={notify}
         />
       </section>
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
+  );
+}
+
+function AvatarVisual({
+  className,
+  mode,
+  previewUrl,
+}: {
+  className: string;
+  mode: AvatarMode;
+  previewUrl: string;
+}) {
+  return (
+    <span
+      className={`${className} avatar-visual ${mode} ${previewUrl ? "has-photo" : ""}`}
+      style={previewUrl ? { backgroundImage: `url("${previewUrl}")` } : undefined}
+      aria-hidden="true"
+    >
+      <i />
+    </span>
   );
 }
 
@@ -271,6 +345,10 @@ function CreatorView({
   notify,
   onShowProjects,
   onShowProject,
+  references,
+  onRemoveReference,
+  onAddAlbumReference,
+  onOpenInspiration,
 }: {
   prompt: string;
   setPrompt: (value: string) => void;
@@ -280,8 +358,13 @@ function CreatorView({
   notify: (message: string) => void;
   onShowProjects: () => void;
   onShowProject: (name: string) => void;
+  references: CreationReference[];
+  onRemoveReference: (id: string) => void;
+  onAddAlbumReference: (file: File) => void;
+  onOpenInspiration: () => void;
 }) {
   const [features, setFeatures] = useState(["圆形旋钮", "折叠结构"]);
+  const [referenceMenuOpen, setReferenceMenuOpen] = useState(false);
 
   const addFeature = () => {
     const suggestions = ["柔和边角", "轻量材质", "单手收纳"];
@@ -329,10 +412,45 @@ function CreatorView({
               </div>
             </div>
             <div className="reference-row">
-              <button className="reference-tile" onClick={() => notify("可在这里替换参考图")}>
-                <span className="reference-shape lamp" /><span className="reference-overlay">参考图 01</span>
-              </button>
-              <button className="add-reference" onClick={() => notify("图片上传将在后续版本接入")}><span>＋</span>添加参考</button>
+              <div className="reference-tray">
+                {references.map((reference) => (
+                  <div
+                    className={`reference-tile ${reference.source === "灵感" ? `inspiration-reference ${reference.tone}` : ""} ${reference.previewUrl ? "album-reference" : ""}`}
+                    key={reference.id}
+                    style={reference.previewUrl ? { backgroundImage: `url("${reference.previewUrl}")` } : undefined}
+                  >
+                    {!reference.previewUrl && reference.source === "默认" && <span className="reference-shape lamp" />}
+                    {!reference.previewUrl && reference.source === "灵感" && <span className="reference-inspiration-shape" />}
+                    <span className="reference-overlay">{reference.title}</span>
+                    <button className="reference-remove" onClick={() => onRemoveReference(reference.id)} aria-label={`删除参考 ${reference.title}`}>×</button>
+                  </div>
+                ))}
+                <div className="add-reference-wrap">
+                  <button className="add-reference" onClick={() => setReferenceMenuOpen((open) => !open)} aria-expanded={referenceMenuOpen}>
+                    <span>＋</span>添加参考
+                  </button>
+                  {referenceMenuOpen && (
+                    <div className="reference-source-menu">
+                      <label>
+                        <span>▧</span><b>从相册中选择</b>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) onAddAlbumReference(file);
+                            setReferenceMenuOpen(false);
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
+                      <button onClick={() => { setReferenceMenuOpen(false); onOpenInspiration(); }}>
+                        <span>✦</span><b>从灵感中选择</b>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="feature-locks">
                 <small>特征</small>
                 <div>
@@ -535,7 +653,7 @@ function InspirationView({
                 <div className="inspiration-add-panel">
                   <small>添加到</small>
                   <button onClick={() => { setAddMenu(""); onAddToCreator(post); }}>
-                    <span>✦</span><b>创作内容输入框</b><i>开始延展想法</i>
+                    <span>✦</span><b>创作内容参考</b><i>添加到创作页参考区域</i>
                   </button>
                   <button onClick={() => { setAddMenu(""); onAddToStyleReference(post); }}>
                     <span>▤</span><b>导出风格参考</b><i>用于 PPT / PDF 视觉编排</i>
@@ -561,16 +679,26 @@ const profileItems = [
 function ProfileCenter({
   open,
   theme,
+  avatarMode,
+  avatarPreview,
   onClose,
   onThemeChange,
+  onAvatarModeChange,
+  onAvatarFile,
   notify,
 }: {
   open: boolean;
   theme: ThemeMode;
+  avatarMode: AvatarMode;
+  avatarPreview: string;
   onClose: () => void;
   onThemeChange: (theme: ThemeMode) => void;
+  onAvatarModeChange: (mode: AvatarMode) => void;
+  onAvatarFile: (file: File) => void;
   notify: (message: string) => void;
 }) {
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+
   return (
     <>
       <button
@@ -595,7 +723,31 @@ function ProfileCenter({
         </header>
 
         <section className="profile-identity">
-          <span className="profile-avatar-large">用</span>
+          <div className="profile-avatar-control">
+            <AvatarVisual className="profile-avatar-large" mode={avatarMode} previewUrl={avatarPreview} />
+            <button className="add-avatar-button" onClick={() => setAvatarMenuOpen((open) => !open)} aria-expanded={avatarMenuOpen}>
+              ＋ 添加头像
+            </button>
+            {avatarMenuOpen && (
+              <div className="avatar-source-menu">
+                <label>
+                  <span>▧</span>从相册中选取
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) onAvatarFile(file);
+                      setAvatarMenuOpen(false);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+                <button onClick={() => { onAvatarModeChange("camera"); setAvatarMenuOpen(false); notify("已启用拍照头像预览"); }}><span>◉</span>拍照</button>
+                <button onClick={() => { onAvatarModeChange("inspiration"); setAvatarMenuOpen(false); notify("已从灵感中选择头像"); }}><span>✦</span>从灵感中添加</button>
+              </div>
+            )}
+          </div>
           <div>
             <b>用户名称</b>
             <small>SketchFlow 创作者</small>
@@ -695,7 +847,10 @@ function ExportView({
           <div className="project-selector">
             {completedProjects.map((item) => (
               <button key={item.name} className={project === item.name ? "active" : ""} onClick={() => { setProject(item.name); setReady(false); }}>
-                <span className={`mini-project ${item.tone}`} /><span><b>{item.name}</b><small>{item.versions} 个版本</small></span><i>{project === item.name ? "✓" : ""}</i>
+                <span className={`mini-project ${item.tone}`}>
+                  <span className={`concept-object concept-${allProjects.findIndex((projectItem) => projectItem.name === item.name) + 1}`} />
+                </span>
+                <span><b>{item.name}</b><small>{item.versions} 个版本</small></span><i>{project === item.name ? "✓" : ""}</i>
               </button>
             ))}
           </div>
@@ -706,9 +861,9 @@ function ExportView({
             <button onClick={() => { setCopy("面向年轻租房人群，聚焦轻量、折叠与小空间收纳，通过多轮草图验证结构与交互细节。"); notify("AI 已优化设计文案"); }}>✦ AI 优化文案</button>
           </div>
 
-          <div className="export-step history-heading"><span>03</span><div><b>历史记录</b><small>查看并再次下载已生成的方案文件</small></div></div>
+          <div className="history-heading"><div><b>历史记录</b><small>查看并再次下载已生成的方案文件</small></div></div>
           <div className="export-history">
-            {history.slice(0, 3).map((item) => (
+            {history.map((item) => (
               <div className="history-row" key={item.id}>
                 <span className="history-format">{item.format}</span>
                 <span><b>{item.project}</b><small>{item.time} · 已生成</small></span>
@@ -719,7 +874,7 @@ function ExportView({
         </section>
 
         <aside className="export-preview">
-          <div className="export-step"><span>04</span><div><b>选择格式并生成</b><small>内容和版式可在生成后继续调整</small></div></div>
+          <div className="export-step"><span>03</span><div><b>选择格式并生成</b><small>内容和版式可在生成后继续调整</small></div></div>
           <div className="format-switch">
             {(["PPT", "PDF"] as const).map((item) => (
               <button key={item} className={format === item ? "active" : ""} onClick={() => { setFormat(item); setReady(false); }}>
