@@ -20,6 +20,8 @@ const allProjects = [
   { name: "无障碍厨房计时器", meta: "更新于 6 月 26 日", versions: 5, tone: "violet", status: "已归档" },
 ];
 
+const completedProjects = allProjects.filter((project) => project.status === "已完成");
+
 const inspirationPosts = [
   { title: "单一转轴的折叠语言", author: "Mori Studio", tag: "结构", tone: "lime", height: "tall" },
   { title: "柔和边界与家庭感", author: "Note Design", tag: "CMF", tone: "clay", height: "medium" },
@@ -46,12 +48,16 @@ export default function Home() {
   const [projectFilter, setProjectFilter] = useState("全部");
   const [inspirationFilter, setInspirationFilter] = useState("为你推荐");
   const [highlightedProject, setHighlightedProject] = useState("");
+  const [styleReferences, setStyleReferences] = useState<(typeof inspirationPosts)[number][]>([]);
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem("sketchflow-theme");
-    const nextTheme: ThemeMode = savedTheme === "dark" ? "dark" : "light";
-    setTheme(nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
+    const frame = window.requestAnimationFrame(() => {
+      const savedTheme = window.localStorage.getItem("sketchflow-theme");
+      const nextTheme: ThemeMode = savedTheme === "dark" ? "dark" : "light";
+      setTheme(nextTheme);
+      document.documentElement.dataset.theme = nextTheme;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
@@ -116,6 +122,20 @@ export default function Home() {
     setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme;
     window.localStorage.setItem("sketchflow-theme", nextTheme);
+  };
+
+  const addInspirationToPrompt = (post: (typeof inspirationPosts)[number]) => {
+    const reference = `参考灵感「${post.title}」（${post.tag}）：`;
+    setPrompt((current) => `${current}${current ? "\n" : ""}${reference}`.slice(0, 240));
+    switchView("创作");
+    notify(`已将「${post.title}」添加到内容输入框`);
+  };
+
+  const addStyleReference = (post: (typeof inspirationPosts)[number]) => {
+    setStyleReferences((current) =>
+      current.some((item) => item.title === post.title) ? current : [...current, post],
+    );
+    notify(`已将「${post.title}」添加为导出风格参考`);
   };
 
   return (
@@ -184,10 +204,21 @@ export default function Home() {
               likedPosts={likedPosts}
               toggleSavedPost={toggleSavedPost}
               toggleLikedPost={toggleLikedPost}
+              onAddToCreator={addInspirationToPrompt}
+              onAddToStyleReference={addStyleReference}
               notify={notify}
             />
           )}
-          {activeView === "导出" && <ExportView notify={notify} />}
+          {activeView === "导出" && (
+            <ExportView
+              styleReferences={styleReferences}
+              onRemoveStyleReference={(title) =>
+                setStyleReferences((current) => current.filter((item) => item.title !== title))
+              }
+              onOpenInspiration={() => switchView("灵感")}
+              notify={notify}
+            />
+          )}
         </div>
 
         <nav className="mobile-nav" aria-label="移动端导航">
@@ -431,6 +462,8 @@ function InspirationView({
   likedPosts,
   toggleSavedPost,
   toggleLikedPost,
+  onAddToCreator,
+  onAddToStyleReference,
   notify,
 }: {
   filter: string;
@@ -439,8 +472,12 @@ function InspirationView({
   likedPosts: string[];
   toggleSavedPost: (title: string) => void;
   toggleLikedPost: (title: string) => void;
+  onAddToCreator: (post: (typeof inspirationPosts)[number]) => void;
+  onAddToStyleReference: (post: (typeof inspirationPosts)[number]) => void;
   notify: (message: string) => void;
 }) {
+  const [addMenu, setAddMenu] = useState("");
+
   return (
     <div className="view-panel inspiration-view">
       <PageHeader
@@ -484,8 +521,27 @@ function InspirationView({
                   >
                     {savedPosts.includes(post.title) ? "★" : "☆"}
                   </button>
+                  <button
+                    className={addMenu === post.title ? "add-post active" : "add-post"}
+                    aria-label={`添加 ${post.title}`}
+                    aria-expanded={addMenu === post.title}
+                    onClick={() => setAddMenu((current) => current === post.title ? "" : post.title)}
+                  >
+                    ＋
+                  </button>
                 </div>
               </div>
+              {addMenu === post.title && (
+                <div className="inspiration-add-panel">
+                  <small>添加到</small>
+                  <button onClick={() => { setAddMenu(""); onAddToCreator(post); }}>
+                    <span>✦</span><b>创作内容输入框</b><i>开始延展想法</i>
+                  </button>
+                  <button onClick={() => { setAddMenu(""); onAddToStyleReference(post); }}>
+                    <span>▤</span><b>导出风格参考</b><i>用于 PPT / PDF 视觉编排</i>
+                  </button>
+                </div>
+              )}
             </article>
           ))}
         </section>
@@ -496,7 +552,6 @@ function InspirationView({
 }
 
 const profileItems = [
-  { icon: "↗", title: "导出记录", detail: "查看与管理历史导出文件" },
   { icon: "✦", title: "AI 使用额度", detail: "本月剩余 76% · 760 次" },
   { icon: "◎", title: "知识助手偏好", detail: "语言、回答风格与专业领域" },
   { icon: "⌘", title: "账号设置", detail: "个人资料、安全与登录方式" },
@@ -593,12 +648,26 @@ function ProfileCenter({
   );
 }
 
-function ExportView({ notify }: { notify: (message: string) => void }) {
-  const [project, setProject] = useState(allProjects[0].name);
+function ExportView({
+  styleReferences,
+  onRemoveStyleReference,
+  onOpenInspiration,
+  notify,
+}: {
+  styleReferences: (typeof inspirationPosts)[number][];
+  onRemoveStyleReference: (title: string) => void;
+  onOpenInspiration: () => void;
+  notify: (message: string) => void;
+}) {
+  const [project, setProject] = useState(completedProjects[0].name);
   const [format, setFormat] = useState<"PDF" | "PPT">("PPT");
   const [copy, setCopy] = useState("项目背景、设计目标、核心亮点、方案演进与最终成果");
   const [generating, setGenerating] = useState(false);
   const [ready, setReady] = useState(false);
+  const [history, setHistory] = useState([
+    { id: 1, project: "便携咖啡研磨器", format: "PPT", time: "今天 10:24" },
+    { id: 2, project: "折叠户外水壶", format: "PDF", time: "7 月 18 日" },
+  ]);
 
   const createDocument = () => {
     setGenerating(true);
@@ -606,6 +675,10 @@ function ExportView({ notify }: { notify: (message: string) => void }) {
     window.setTimeout(() => {
       setGenerating(false);
       setReady(true);
+      setHistory((current) => [
+        { id: Date.now(), project, format, time: "刚刚" },
+        ...current.filter((item) => !(item.project === project && item.format === format)),
+      ]);
       notify(`${format} 方案介绍已生成`);
     }, 1200);
   };
@@ -615,13 +688,12 @@ function ExportView({ notify }: { notify: (message: string) => void }) {
       <PageHeader
         eyebrow="AI 智能导出"
         title="把设计过程，整理成一份会讲故事的方案。"
-        action={<span className="export-badge"><span>✦</span> AI 自动编排</span>}
       />
       <div className="export-layout">
         <section className="export-settings">
           <div className="export-step"><span>01</span><div><b>选择项目</b><small>选择需要整理与介绍的设计方案</small></div></div>
           <div className="project-selector">
-            {allProjects.filter((item) => item.status !== "已归档").map((item) => (
+            {completedProjects.map((item) => (
               <button key={item.name} className={project === item.name ? "active" : ""} onClick={() => { setProject(item.name); setReady(false); }}>
                 <span className={`mini-project ${item.tone}`} /><span><b>{item.name}</b><small>{item.versions} 个版本</small></span><i>{project === item.name ? "✓" : ""}</i>
               </button>
@@ -633,10 +705,21 @@ function ExportView({ notify }: { notify: (message: string) => void }) {
             <textarea value={copy} onChange={(event) => { setCopy(event.target.value); setReady(false); }} aria-label="设计文案" />
             <button onClick={() => { setCopy("面向年轻租房人群，聚焦轻量、折叠与小空间收纳，通过多轮草图验证结构与交互细节。"); notify("AI 已优化设计文案"); }}>✦ AI 优化文案</button>
           </div>
+
+          <div className="export-step history-heading"><span>03</span><div><b>历史记录</b><small>查看并再次下载已生成的方案文件</small></div></div>
+          <div className="export-history">
+            {history.slice(0, 3).map((item) => (
+              <div className="history-row" key={item.id}>
+                <span className="history-format">{item.format}</span>
+                <span><b>{item.project}</b><small>{item.time} · 已生成</small></span>
+                <button onClick={() => notify(`${item.project} 的 ${item.format} 文件已进入下载队列`)} aria-label={`下载 ${item.project} ${item.format}`}>↓</button>
+              </div>
+            ))}
+          </div>
         </section>
 
         <aside className="export-preview">
-          <div className="export-step"><span>03</span><div><b>选择格式并生成</b><small>内容和版式可在生成后继续调整</small></div></div>
+          <div className="export-step"><span>04</span><div><b>选择格式并生成</b><small>内容和版式可在生成后继续调整</small></div></div>
           <div className="format-switch">
             {(["PPT", "PDF"] as const).map((item) => (
               <button key={item} className={format === item ? "active" : ""} onClick={() => { setFormat(item); setReady(false); }}>
@@ -657,6 +740,29 @@ function ExportView({ notify }: { notify: (message: string) => void }) {
             {generating ? "AI 正在编排内容…" : ready ? `下载 ${format} 文件` : `生成 ${format} 方案`}<span>{generating ? "◌" : ready ? "↓" : "→"}</span>
           </button>
           <p className="export-note">AI 将自动整理项目版本、设计文案与关键亮点。</p>
+          <section className="style-reference-section">
+            <div className="style-reference-heading">
+              <div><b>风格参考</b><small>从灵感库添加，指导版式、材质与配色</small></div>
+              <button onClick={onOpenInspiration}>＋ 添加</button>
+            </div>
+            {styleReferences.length > 0 ? (
+              <div className="style-reference-list">
+                {styleReferences.map((item) => (
+                  <div className="style-reference-item" key={item.title}>
+                    <span className={`style-swatch ${item.tone}`}><i /></span>
+                    <span><b>{item.title}</b><small>{item.tag} · {item.author}</small></span>
+                    <button onClick={() => onRemoveStyleReference(item.title)} aria-label={`移除风格参考 ${item.title}`}>×</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <button className="empty-style-reference" onClick={onOpenInspiration}>
+                <span>＋</span>
+                <b>从灵感库添加参考</b>
+                <small>你收藏的好风格，可以直接用于导出</small>
+              </button>
+            )}
+          </section>
         </aside>
       </div>
     </div>
