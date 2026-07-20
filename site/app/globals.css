@@ -55,7 +55,7 @@ textarea:focus-visible {
 
 .app-shell {
   width: min(1480px, 100%);
-  min-height: auto;
+  height: clamp(680px, calc(100vh - 56px), 900px);
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   position: relative;
@@ -286,11 +286,29 @@ textarea:focus-visible {
 
 .workspace {
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   padding: 26px 30px 24px;
 }
 
 .view-panel {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   animation: view-enter 260ms ease-out;
+}
+
+.view-panel > .topbar,
+.view-panel > .page-toolbar,
+.view-panel > .inspiration-tabs {
+  flex: 0 0 auto;
+}
+
+.view-panel > .content-grid {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 @keyframes view-enter {
@@ -1135,10 +1153,16 @@ textarea:focus-visible {
 }
 
 .all-project-grid {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
   gap: 17px;
   margin-top: 20px;
+  padding-right: 5px;
+  padding-bottom: 8px;
+  overflow-y: auto;
 }
 
 .project-panel {
@@ -1356,7 +1380,6 @@ textarea:focus-visible {
 }
 
 .status-dot.进行中 { background: #b8d746; }
-.status-dot.待评审 { background: #e68c60; }
 .status-dot.已完成 { background: #6f8fa7; }
 
 .project-panel-copy h2 {
@@ -1450,10 +1473,33 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
+.masonry-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 20px;
+  padding-right: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #c9c8c4 transparent;
+  scrollbar-width: thin;
+}
+
+.masonry-scroll::-webkit-scrollbar,
+.all-project-grid::-webkit-scrollbar,
+.view-panel > .content-grid::-webkit-scrollbar {
+  width: 7px;
+}
+
+.masonry-scroll::-webkit-scrollbar-thumb,
+.all-project-grid::-webkit-scrollbar-thumb,
+.view-panel > .content-grid::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cfcec9;
+}
+
 .masonry-feed {
   columns: 4 190px;
   column-gap: 15px;
-  margin-top: 20px;
 }
 
 .inspiration-card {
@@ -1671,7 +1717,7 @@ textarea:focus-visible {
   }
 
   .app-shell {
-    min-height: auto;
+    height: clamp(680px, calc(100vh - 32px), 900px);
     grid-template-columns: 82px minmax(0, 1fr);
     border-radius: 30px;
   }
@@ -1732,6 +1778,7 @@ textarea:focus-visible {
 
   .app-shell {
     min-height: 100vh;
+    height: auto;
     display: block;
     overflow: visible;
     border: 0;
@@ -1744,7 +1791,25 @@ textarea:focus-visible {
   }
 
   .workspace {
+    overflow: visible;
     padding: 22px 17px 96px;
+  }
+
+  .view-panel {
+    height: auto;
+    min-height: calc(100vh - 118px);
+    display: block;
+  }
+
+  .view-panel > .content-grid,
+  .all-project-grid,
+  .masonry-scroll {
+    overflow: visible;
+  }
+
+  .masonry-scroll {
+    margin-top: 20px;
+    padding-right: 0;
   }
 
   .topbar h1 {

@@ -12,7 +12,7 @@ const recentProjects = [
 
 const allProjects = [
   { name: "模块化通勤灯", meta: "更新于 5 分钟前", versions: 8, tone: "orange", status: "进行中" },
-  { name: "桌面空气净化器", meta: "更新于昨天", versions: 4, tone: "blue", status: "待评审" },
+  { name: "桌面空气净化器", meta: "更新于昨天", versions: 4, tone: "blue", status: "进行中" },
   { name: "便携咖啡研磨器", meta: "更新于 3 天前", versions: 12, tone: "green", status: "已完成" },
   { name: "陪伴型香氛音箱", meta: "更新于 7 月 12 日", versions: 6, tone: "rose", status: "进行中" },
   { name: "折叠户外水壶", meta: "更新于 7 月 8 日", versions: 9, tone: "sand", status: "已完成" },
@@ -99,6 +99,9 @@ export default function Home() {
                 <span>{icon}</span>{label}
               </button>
             ))}
+            <button className="nav-item" onClick={() => notify("导出中心将在后续版本接入")}>
+              <span>↗</span>导出
+            </button>
           </nav>
 
           <button className="profile" onClick={() => notify("个人中心将在后续版本接入")}>
@@ -287,7 +290,7 @@ function ProjectsView({
       />
       <div className="page-toolbar">
         <div className="filter-tabs" aria-label="筛选项目">
-          {["全部", "进行中", "待评审", "已完成", "已归档"].map((item) => (
+          {["全部", "进行中", "已完成", "已归档"].map((item) => (
             <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>
           ))}
         </div>
@@ -356,28 +359,30 @@ function InspirationView({
           <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>
         ))}
       </div>
-      <section className="masonry-feed" aria-label={`${filter}灵感流`}>
-        {inspirationPosts.map((post, index) => (
-          <article className="inspiration-card" key={post.title}>
-            <button className={`inspiration-art ${post.tone} ${post.height}`} onClick={() => notify(`正在查看「${post.title}」`)}>
-              <span className={`art-object art-${(index % 8) + 1}`} />
-              <span className="art-tag">{post.tag}</span>
-              <span className="view-hint">查看灵感 ↗</span>
-            </button>
-            <div className="inspiration-copy">
-              <div><h2>{post.title}</h2><p>{post.author}</p></div>
-              <button
-                className={savedPosts.includes(post.title) ? "save-post active" : "save-post"}
-                aria-label={`${savedPosts.includes(post.title) ? "取消收藏" : "收藏"} ${post.title}`}
-                onClick={() => toggleSavedPost(post.title)}
-              >
-                {savedPosts.includes(post.title) ? "★" : "☆"}
+      <div className="masonry-scroll">
+        <section className="masonry-feed" aria-label={`${filter}灵感流`}>
+          {inspirationPosts.map((post, index) => (
+            <article className="inspiration-card" key={post.title}>
+              <button className={`inspiration-art ${post.tone} ${post.height}`} onClick={() => notify(`正在查看「${post.title}」`)}>
+                <span className={`art-object art-${(index % 8) + 1}`} />
+                <span className="art-tag">{post.tag}</span>
+                <span className="view-hint">查看灵感 ↗</span>
               </button>
-            </div>
-          </article>
-        ))}
-      </section>
-      <div className="feed-end"><span>✦</span>继续向下，灵感还在生长</div>
+              <div className="inspiration-copy">
+                <div><h2>{post.title}</h2><p>{post.author}</p></div>
+                <button
+                  className={savedPosts.includes(post.title) ? "save-post active" : "save-post"}
+                  aria-label={`${savedPosts.includes(post.title) ? "取消收藏" : "收藏"} ${post.title}`}
+                  onClick={() => toggleSavedPost(post.title)}
+                >
+                  {savedPosts.includes(post.title) ? "★" : "☆"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+        <div className="feed-end"><span>✦</span>继续向下，灵感还在生长</div>
+      </div>
     </div>
   );
 }
