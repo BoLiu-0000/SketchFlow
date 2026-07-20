@@ -8,13 +8,6 @@ const projects = [
   { name: "便携咖啡研磨器", meta: "12 个版本 · 3 天前", tone: "green" },
 ];
 
-const versions = [
-  { id: "V.04", title: "折叠灯臂", time: "刚刚", active: true },
-  { id: "V.03", title: "暖灰外壳", time: "12 分钟前" },
-  { id: "V.02", title: "旋钮交互", time: "28 分钟前" },
-  { id: "V.01", title: "初始概念", time: "今天 14:20" },
-];
-
 export default function Home() {
   const [activeNav, setActiveNav] = useState("创作");
   const [prompt, setPrompt] = useState(
@@ -70,12 +63,6 @@ export default function Home() {
               </button>
             ))}
           </nav>
-
-          <div className="rail-tip">
-            <span className="tip-orbit">◎</span>
-            <b>今天也有好想法</b>
-            <p>灵感、草图和每次修改都会自动保存。</p>
-          </div>
 
           <button className="profile" onClick={() => notify("个人中心将在下一版接入")}>
             <span className="avatar">林</span>
@@ -166,7 +153,6 @@ export default function Home() {
               <section className="recent-section">
                 <div className="section-heading">
                   <div>
-                    <span className="step-label">继续创作</span>
                     <h2>最近项目</h2>
                   </div>
                   <button onClick={() => notify("项目列表将在下一版接入")}>查看全部 →</button>
@@ -224,37 +210,6 @@ export default function Home() {
                 </button>
               </article>
 
-              <article className="timeline-card">
-                <div className="timeline-title">
-                  <div>
-                    <span className="step-label">模块化通勤灯</span>
-                    <h2>版本时间线</h2>
-                  </div>
-                  <button aria-label="更多版本操作" onClick={() => notify("更多操作将在下一版接入")}>•••</button>
-                </div>
-                <div className="version-list">
-                  {versions.map((version) => (
-                    <button
-                      className={version.active ? "version active" : "version"}
-                      key={version.id}
-                      onClick={() => notify(`已切换到 ${version.id} ${version.title}`)}
-                    >
-                      <span className="version-dot" />
-                      <span className="version-thumb">
-                        <span />
-                      </span>
-                      <span className="version-copy">
-                        <b>{version.id} · {version.title}</b>
-                        <small>{version.time}</small>
-                      </span>
-                      {version.active && <span className="current-pill">当前</span>}
-                    </button>
-                  ))}
-                </div>
-                <button className="history-btn" onClick={() => notify("已展开完整版本历史")}>
-                  查看完整历史
-                </button>
-              </article>
             </aside>
           </div>
         </div>

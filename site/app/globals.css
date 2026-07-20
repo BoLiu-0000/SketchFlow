@@ -191,7 +191,7 @@ textarea:focus-visible {
   grid-template-columns: 36px 1fr auto;
   align-items: center;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: auto;
   padding: 10px;
   border: 0;
   border-radius: 15px;
@@ -604,7 +604,8 @@ textarea:focus-visible {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .project-grid {
