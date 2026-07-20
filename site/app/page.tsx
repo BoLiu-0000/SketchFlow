@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-type ViewName = "创作" | "项目" | "灵感";
+type ViewName = "创作" | "项目" | "灵感" | "导出";
 
 const recentProjects = [
   { name: "模块化通勤灯", meta: "8 个版本 · 刚刚", tone: "orange" },
@@ -34,15 +34,15 @@ const inspirationPosts = [
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewName>("创作");
-  const [prompt, setPrompt] = useState(
-    "一盏适合通勤和小户型的桌面灯，灯臂可以折叠收纳，保留圆形旋钮，整体轻巧但不要像玩具。",
-  );
+  const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState("");
   const [favorites, setFavorites] = useState<string[]>(["桌面空气净化器"]);
   const [savedPosts, setSavedPosts] = useState<string[]>(["单一转轴的折叠语言"]);
+  const [likedPosts, setLikedPosts] = useState<string[]>(["柔和边界与家庭感"]);
   const [projectFilter, setProjectFilter] = useState("全部");
   const [inspirationFilter, setInspirationFilter] = useState("为你推荐");
+  const [highlightedProject, setHighlightedProject] = useState("");
 
   const promptCount = useMemo(() => prompt.trim().length, [prompt]);
   const visibleProjects = projectFilter === "全部"
@@ -79,6 +79,20 @@ export default function Home() {
     );
   };
 
+  const toggleLikedPost = (title: string) => {
+    setLikedPosts((current) =>
+      current.includes(title) ? current.filter((item) => item !== title) : [...current, title],
+    );
+  };
+
+  const showProject = (name: string) => {
+    setProjectFilter("全部");
+    setHighlightedProject(name);
+    switchView("项目");
+    notify(`已定位到「${name}」`);
+    window.setTimeout(() => setHighlightedProject(""), 2400);
+  };
+
   return (
     <main className="app-page">
       <section className="app-shell">
@@ -89,7 +103,7 @@ export default function Home() {
           </div>
 
           <nav className="primary-nav" aria-label="主导航">
-            {([["创作", "✦"], ["项目", "▦"], ["灵感", "◉"]] as [ViewName, string][]).map(([label, icon]) => (
+            {([["创作", "✦"], ["项目", "▦"], ["灵感", "◉"], ["导出", "↗"]] as [ViewName, string][]).map(([label, icon]) => (
               <button
                 className={activeView === label ? "nav-item active" : "nav-item"}
                 key={label}
@@ -99,9 +113,6 @@ export default function Home() {
                 <span>{icon}</span>{label}
               </button>
             ))}
-            <button className="nav-item" onClick={() => notify("导出中心将在后续版本接入")}>
-              <span>↗</span>导出
-            </button>
           </nav>
 
           <button className="profile" onClick={() => notify("个人中心将在后续版本接入")}>
@@ -121,6 +132,7 @@ export default function Home() {
               generate={generate}
               notify={notify}
               onShowProjects={() => switchView("项目")}
+              onShowProject={showProject}
             />
           )}
           {activeView === "项目" && (
@@ -130,6 +142,7 @@ export default function Home() {
               setFilter={setProjectFilter}
               favorites={favorites}
               toggleFavorite={toggleFavorite}
+              highlightedProject={highlightedProject}
               notify={notify}
             />
           )}
@@ -138,19 +151,21 @@ export default function Home() {
               filter={inspirationFilter}
               setFilter={setInspirationFilter}
               savedPosts={savedPosts}
+              likedPosts={likedPosts}
               toggleSavedPost={toggleSavedPost}
+              toggleLikedPost={toggleLikedPost}
               notify={notify}
             />
           )}
+          {activeView === "导出" && <ExportView notify={notify} />}
         </div>
 
         <nav className="mobile-nav" aria-label="移动端导航">
-          {([["创作", "✦"], ["项目", "▦"], ["灵感", "◌"]] as [ViewName, string][]).map(([label, icon]) => (
+          {([["创作", "✦"], ["项目", "▦"], ["灵感", "◌"], ["导出", "↗"]] as [ViewName, string][]).map(([label, icon]) => (
             <button key={label} className={activeView === label ? "active" : ""} onClick={() => switchView(label)}>
               <span>{icon}</span>{label}
             </button>
           ))}
-          <button onClick={() => notify("个人中心将在后续版本接入")}><span>☺</span>我的</button>
         </nav>
       </section>
       {toast && <div className="toast" role="status">{toast}</div>}
@@ -183,6 +198,7 @@ function CreatorView({
   generate,
   notify,
   onShowProjects,
+  onShowProject,
 }: {
   prompt: string;
   setPrompt: (value: string) => void;
@@ -191,7 +207,21 @@ function CreatorView({
   generate: () => void;
   notify: (message: string) => void;
   onShowProjects: () => void;
+  onShowProject: (name: string) => void;
 }) {
+  const [features, setFeatures] = useState(["圆形旋钮", "折叠结构"]);
+
+  const addFeature = () => {
+    const suggestions = ["柔和边角", "轻量材质", "单手收纳"];
+    const next = suggestions.find((item) => !features.includes(item));
+    if (next) {
+      setFeatures((current) => [...current, next]);
+      notify(`已增加特征「${next}」`);
+    } else {
+      notify("特征已补充完整");
+    }
+  };
+
   return (
     <div className="view-panel">
       <PageHeader
@@ -210,7 +240,13 @@ function CreatorView({
           <article className="prompt-card">
             <div className="card-heading"><div><h2>你想设计什么？</h2></div></div>
             <div className="prompt-box">
-              <textarea aria-label="设计想法" value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={240} />
+              <textarea
+                aria-label="设计想法"
+                placeholder="请输入你的想法"
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                maxLength={240}
+              />
               <div className="prompt-footer">
                 <div className="input-tools">
                   <button aria-label="添加图片" onClick={() => notify("图片上传将在后续版本接入")}>▧</button>
@@ -226,8 +262,15 @@ function CreatorView({
               </button>
               <button className="add-reference" onClick={() => notify("图片上传将在后续版本接入")}><span>＋</span>添加参考</button>
               <div className="feature-locks">
-                <small>必须保留</small>
-                <div><button>圆形旋钮 <span>×</span></button><button>折叠结构 <span>×</span></button></div>
+                <small>特征</small>
+                <div>
+                  {features.map((feature) => (
+                    <button key={feature} onClick={() => setFeatures((current) => current.filter((item) => item !== feature))}>
+                      {feature} <span>×</span>
+                    </button>
+                  ))}
+                  <button className="add-feature" onClick={addFeature}><span>＋</span> 增加</button>
+                </div>
               </div>
             </div>
             <div className="prompt-actions">
@@ -244,7 +287,7 @@ function CreatorView({
             </div>
             <div className="project-grid">
               {recentProjects.map((project, index) => (
-                <button className="project-card" key={project.name} onClick={() => notify(`已打开「${project.name}」`)}>
+                <button className="project-card" key={project.name} onClick={() => onShowProject(project.name)}>
                   <span className={`project-visual ${project.tone}`}><span className={`object-shape object-${index + 1}`} /><small>0{index + 1}</small></span>
                   <span className="project-info"><b>{project.name}</b><small>{project.meta}</small></span>
                   <span className="project-arrow">↗</span>
@@ -272,6 +315,7 @@ function ProjectsView({
   setFilter,
   favorites,
   toggleFavorite,
+  highlightedProject,
   notify,
 }: {
   projects: typeof allProjects;
@@ -279,6 +323,7 @@ function ProjectsView({
   setFilter: (value: string) => void;
   favorites: string[];
   toggleFavorite: (name: string) => void;
+  highlightedProject: string;
   notify: (message: string) => void;
 }) {
   return (
@@ -298,7 +343,7 @@ function ProjectsView({
       </div>
       <section className="all-project-grid" aria-label="历史项目">
         {projects.map((project, index) => (
-          <article className="project-panel" key={project.name}>
+          <article className={highlightedProject === project.name ? "project-panel highlighted" : "project-panel"} key={project.name}>
             <button className={`project-preview ${project.tone}`} onClick={() => notify(`正在预览「${project.name}」`)}>
               <span className="preview-index">0{index + 1}</span>
               <span className={`concept-object concept-${(index % 6) + 1}`} />
@@ -309,17 +354,26 @@ function ProjectsView({
               <h2>{project.name}</h2>
               <p>{project.versions} 个版本 · {project.meta}</p>
             </div>
-            <div className="project-actions">
+            <div className={project.status === "已归档" ? "project-actions archived-actions" : "project-actions"}>
               <button aria-label={`预览 ${project.name}`} onClick={() => notify(`正在预览「${project.name}」`)}><span>◉</span>预览</button>
-              <button aria-label={`编辑 ${project.name}`} onClick={() => notify(`正在编辑「${project.name}」`)}><span>✎</span>编辑</button>
-              <button aria-label={`归档 ${project.name}`} onClick={() => notify(`「${project.name}」已移入归档`)}><span>□</span>归档</button>
-              <button
-                className={favorites.includes(project.name) ? "favorite active" : "favorite"}
-                aria-label={`${favorites.includes(project.name) ? "取消收藏" : "收藏"} ${project.name}`}
-                onClick={() => toggleFavorite(project.name)}
-              >
-                <span>{favorites.includes(project.name) ? "★" : "☆"}</span>收藏
-              </button>
+              {project.status === "已归档" ? (
+                <>
+                  <button aria-label={`彻底删除 ${project.name}`} onClick={() => notify(`请再次确认是否彻底删除「${project.name}」`)}><span>×</span>彻底删除</button>
+                  <button aria-label={`撤销归档 ${project.name}`} onClick={() => notify(`「${project.name}」已恢复到项目列表`)}><span>↶</span>撤销归档</button>
+                </>
+              ) : (
+                <>
+                  <button aria-label={`编辑 ${project.name}`} onClick={() => notify(`正在编辑「${project.name}」`)}><span>✎</span>编辑</button>
+                  <button aria-label={`归档 ${project.name}`} onClick={() => notify(`「${project.name}」已移入归档`)}><span>□</span>归档</button>
+                  <button
+                    className={favorites.includes(project.name) ? "favorite active" : "favorite"}
+                    aria-label={`${favorites.includes(project.name) ? "取消收藏" : "收藏"} ${project.name}`}
+                    onClick={() => toggleFavorite(project.name)}
+                  >
+                    <span>{favorites.includes(project.name) ? "★" : "☆"}</span>收藏
+                  </button>
+                </>
+              )}
             </div>
           </article>
         ))}
@@ -333,13 +387,17 @@ function InspirationView({
   filter,
   setFilter,
   savedPosts,
+  likedPosts,
   toggleSavedPost,
+  toggleLikedPost,
   notify,
 }: {
   filter: string;
   setFilter: (value: string) => void;
   savedPosts: string[];
+  likedPosts: string[];
   toggleSavedPost: (title: string) => void;
+  toggleLikedPost: (title: string) => void;
   notify: (message: string) => void;
 }) {
   return (
@@ -362,7 +420,7 @@ function InspirationView({
       <div className="masonry-scroll">
         <section className="masonry-feed" aria-label={`${filter}灵感流`}>
           {inspirationPosts.map((post, index) => (
-            <article className="inspiration-card" key={post.title}>
+            <article className={`inspiration-card variant-${index % 4}`} key={post.title}>
               <button className={`inspiration-art ${post.tone} ${post.height}`} onClick={() => notify(`正在查看「${post.title}」`)}>
                 <span className={`art-object art-${(index % 8) + 1}`} />
                 <span className="art-tag">{post.tag}</span>
@@ -370,18 +428,97 @@ function InspirationView({
               </button>
               <div className="inspiration-copy">
                 <div><h2>{post.title}</h2><p>{post.author}</p></div>
-                <button
-                  className={savedPosts.includes(post.title) ? "save-post active" : "save-post"}
-                  aria-label={`${savedPosts.includes(post.title) ? "取消收藏" : "收藏"} ${post.title}`}
-                  onClick={() => toggleSavedPost(post.title)}
-                >
-                  {savedPosts.includes(post.title) ? "★" : "☆"}
-                </button>
+                <div className="post-actions">
+                  <button
+                    className={likedPosts.includes(post.title) ? "like-post active" : "like-post"}
+                    aria-label={`${likedPosts.includes(post.title) ? "取消点赞" : "点赞"} ${post.title}`}
+                    onClick={() => toggleLikedPost(post.title)}
+                  >
+                    {likedPosts.includes(post.title) ? "♥" : "♡"}
+                  </button>
+                  <button
+                    className={savedPosts.includes(post.title) ? "save-post active" : "save-post"}
+                    aria-label={`${savedPosts.includes(post.title) ? "取消收藏" : "收藏"} ${post.title}`}
+                    onClick={() => toggleSavedPost(post.title)}
+                  >
+                    {savedPosts.includes(post.title) ? "★" : "☆"}
+                  </button>
+                </div>
               </div>
             </article>
           ))}
         </section>
         <div className="feed-end"><span>✦</span>继续向下，灵感还在生长</div>
+      </div>
+    </div>
+  );
+}
+
+function ExportView({ notify }: { notify: (message: string) => void }) {
+  const [project, setProject] = useState(allProjects[0].name);
+  const [format, setFormat] = useState<"PDF" | "PPT">("PPT");
+  const [copy, setCopy] = useState("项目背景、设计目标、核心亮点、方案演进与最终成果");
+  const [generating, setGenerating] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  const createDocument = () => {
+    setGenerating(true);
+    setReady(false);
+    window.setTimeout(() => {
+      setGenerating(false);
+      setReady(true);
+      notify(`${format} 方案介绍已生成`);
+    }, 1200);
+  };
+
+  return (
+    <div className="view-panel export-view">
+      <PageHeader
+        eyebrow="AI 智能导出"
+        title="把设计过程，整理成一份会讲故事的方案。"
+        action={<span className="export-badge"><span>✦</span> AI 自动编排</span>}
+      />
+      <div className="export-layout">
+        <section className="export-settings">
+          <div className="export-step"><span>01</span><div><b>选择项目</b><small>选择需要整理与介绍的设计方案</small></div></div>
+          <div className="project-selector">
+            {allProjects.filter((item) => item.status !== "已归档").map((item) => (
+              <button key={item.name} className={project === item.name ? "active" : ""} onClick={() => { setProject(item.name); setReady(false); }}>
+                <span className={`mini-project ${item.tone}`} /><span><b>{item.name}</b><small>{item.versions} 个版本</small></span><i>{project === item.name ? "✓" : ""}</i>
+              </button>
+            ))}
+          </div>
+
+          <div className="export-step"><span>02</span><div><b>设计文案</b><small>AI 将依据这段内容生成叙事结构</small></div></div>
+          <div className="export-copy-box">
+            <textarea value={copy} onChange={(event) => { setCopy(event.target.value); setReady(false); }} aria-label="设计文案" />
+            <button onClick={() => { setCopy("面向年轻租房人群，聚焦轻量、折叠与小空间收纳，通过多轮草图验证结构与交互细节。"); notify("AI 已优化设计文案"); }}>✦ AI 优化文案</button>
+          </div>
+        </section>
+
+        <aside className="export-preview">
+          <div className="export-step"><span>03</span><div><b>选择格式并生成</b><small>内容和版式可在生成后继续调整</small></div></div>
+          <div className="format-switch">
+            {(["PPT", "PDF"] as const).map((item) => (
+              <button key={item} className={format === item ? "active" : ""} onClick={() => { setFormat(item); setReady(false); }}>
+                <span>{item === "PPT" ? "▤" : "▧"}</span><b>{item}</b><small>{item === "PPT" ? "演示与提案" : "归档与分享"}</small>
+              </button>
+            ))}
+          </div>
+          <div className={ready ? "document-preview ready" : "document-preview"}>
+            <div className="document-cover"><span>SKETCHFLOW / {format}</span><strong>{project}</strong><small>AI 设计方案介绍</small></div>
+            <div className="document-pages"><span /><span /><span /></div>
+            {ready && <div className="ready-mark">✓ 已完成</div>}
+          </div>
+          <button
+            className="primary-btn export-generate"
+            disabled={generating || !copy.trim()}
+            onClick={ready ? () => notify(`${project} 的 ${format} 文件已进入下载队列`) : createDocument}
+          >
+            {generating ? "AI 正在编排内容…" : ready ? `下载 ${format} 文件` : `生成 ${format} 方案`}<span>{generating ? "◌" : ready ? "↓" : "→"}</span>
+          </button>
+          <p className="export-note">AI 将自动整理项目版本、设计文案与关键亮点。</p>
+        </aside>
       </div>
     </div>
   );
