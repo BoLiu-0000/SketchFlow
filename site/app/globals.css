@@ -268,7 +268,7 @@ textarea:focus-visible {
 .topbar h1 {
   max-width: 620px;
   margin: 8px 0 0;
-  font-size: clamp(23px, 2.2vw, 34px);
+  font-size: clamp(22px, 1.9vw, 31px);
   letter-spacing: -0.035em;
   line-height: 1.18;
 }
@@ -354,19 +354,16 @@ textarea:focus-visible {
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(310px, 0.9fr);
+  grid-template-areas:
+    "prompt ai"
+    "recent recent";
   gap: 22px;
   margin-top: 26px;
 }
 
 .creator-column,
 .insight-column {
-  min-width: 0;
-}
-
-.insight-column {
-  display: grid;
-  align-content: start;
-  gap: 18px;
+  display: contents;
 }
 
 .prompt-card,
@@ -378,8 +375,13 @@ textarea:focus-visible {
 }
 
 .prompt-card {
+  grid-area: prompt;
   padding: 24px;
   border-radius: 27px;
+}
+
+.prompt-card .card-heading h2 {
+  margin-top: 0;
 }
 
 .card-heading h2,
@@ -595,7 +597,9 @@ textarea:focus-visible {
 }
 
 .recent-section {
-  margin-top: 28px;
+  grid-area: recent;
+  min-width: 0;
+  margin-top: 0;
 }
 
 .section-heading > button,
@@ -776,6 +780,9 @@ textarea:focus-visible {
 }
 
 .ai-card {
+  grid-area: ai;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(145deg, #27282d, #1f2024);
   color: white;
   box-shadow: 0 15px 30px rgba(32, 33, 38, 0.16);
@@ -860,7 +867,7 @@ textarea:focus-visible {
   width: 100%;
   display: flex;
   justify-content: space-between;
-  margin-top: 17px;
+  margin-top: auto;
   padding: 11px 0 0;
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.09);

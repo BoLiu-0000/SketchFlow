@@ -98,7 +98,6 @@ export default function Home() {
               <article className="prompt-card">
                 <div className="card-heading">
                   <div>
-                    <span className="step-label">01 · 记录灵感</span>
                     <h2>你想设计什么？</h2>
                   </div>
                   <span className="autosave">● 已自动保存</span>
