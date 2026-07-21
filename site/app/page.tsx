@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ViewName = "创作" | "项目" | "灵感" | "导出";
 type ThemeMode = "light" | "dark";
@@ -28,19 +28,17 @@ const allProjects = [
   { name: "无障碍厨房计时器", meta: "更新于 6 月 26 日", versions: 5, tone: "violet", status: "已归档" },
 ];
 
-const completedProjects = allProjects.filter((project) => project.status === "已完成");
-
 const inspirationPosts = [
-  { title: "单一转轴的折叠语言", author: "Mori Studio", tag: "结构", tone: "lime", height: "tall" },
-  { title: "柔和边界与家庭感", author: "Note Design", tag: "CMF", tone: "clay", height: "medium" },
-  { title: "半透明材料的光影层次", author: "Aperture Lab", tag: "材质", tone: "glass", height: "short" },
-  { title: "为小空间保留呼吸感", author: "Nook Journal", tag: "空间", tone: "blue", height: "tall" },
-  { title: "克制的按钮反馈", author: "Everyday Objects", tag: "交互", tone: "ink", height: "medium" },
-  { title: "便携产品的握持曲线", author: "Forma", tag: "人体工学", tone: "sage", height: "short" },
-  { title: "将功能收进一条线", author: "Minimal Archive", tag: "形态", tone: "paper", height: "tall" },
-  { title: "暖灰色的安静表达", author: "Soft Goods", tag: "配色", tone: "stone", height: "medium" },
-  { title: "机械细节也可以很温柔", author: "Index Works", tag: "细节", tone: "orange", height: "short" },
-  { title: "在桌面上创造微型地景", author: "Field Notes", tag: "概念", tone: "violet", height: "tall" },
+  { title: "单一转轴的折叠语言", author: "Mori Studio", tag: "结构", tone: "lime", height: "tall", categories: ["产品"] },
+  { title: "柔和边界与家庭感", author: "Note Design", tag: "CMF", tone: "clay", height: "medium", categories: ["产品", "配色"] },
+  { title: "半透明材料的光影层次", author: "Aperture Lab", tag: "材质", tone: "glass", height: "short", categories: ["材质"] },
+  { title: "为小空间保留呼吸感", author: "Nook Journal", tag: "空间", tone: "blue", height: "tall", categories: ["空间"] },
+  { title: "克制的按钮反馈", author: "Everyday Objects", tag: "交互", tone: "ink", height: "medium", categories: ["交互"] },
+  { title: "便携产品的握持曲线", author: "Forma", tag: "人体工学", tone: "sage", height: "short", categories: ["产品"] },
+  { title: "将功能收进一条线", author: "Minimal Archive", tag: "形态", tone: "paper", height: "tall", categories: ["产品"] },
+  { title: "暖灰色的安静表达", author: "Soft Goods", tag: "配色", tone: "stone", height: "medium", categories: ["配色", "材质"] },
+  { title: "机械细节也可以很温柔", author: "Index Works", tag: "细节", tone: "orange", height: "short", categories: ["产品", "交互"] },
+  { title: "在桌面上创造微型地景", author: "Field Notes", tag: "概念", tone: "violet", height: "tall", categories: ["空间"] },
 ];
 
 export default function Home() {
@@ -51,6 +49,7 @@ export default function Home() {
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState("");
   const [favorites, setFavorites] = useState<string[]>(["桌面空气净化器"]);
+  const [projects, setProjects] = useState(allProjects);
   const [savedPosts, setSavedPosts] = useState<string[]>(["单一转轴的折叠语言"]);
   const [likedPosts, setLikedPosts] = useState<string[]>(["柔和边界与家庭感"]);
   const [projectFilter, setProjectFilter] = useState("全部");
@@ -62,6 +61,7 @@ export default function Home() {
   ]);
   const [avatarMode, setAvatarMode] = useState<AvatarMode>("default");
   const [avatarPreview, setAvatarPreview] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -84,8 +84,11 @@ export default function Home() {
 
   const promptCount = useMemo(() => prompt.trim().length, [prompt]);
   const visibleProjects = projectFilter === "全部"
-    ? allProjects
-    : allProjects.filter((project) => project.status === projectFilter);
+    ? projects
+    : projects.filter((project) => project.status === projectFilter);
+  const visibleRecentProjects = recentProjects.filter((recent) =>
+    projects.some((project) => project.name === recent.name),
+  );
 
   const notify = (message: string) => {
     setToast(message);
@@ -178,6 +181,26 @@ export default function Home() {
     notify("头像已从相册更新");
   };
 
+  const archiveProject = (name: string) => {
+    setProjects((current) => current.map((project) =>
+      project.name === name ? { ...project, status: "已归档" } : project,
+    ));
+    notify(`「${name}」已移入归档`);
+  };
+
+  const restoreProject = (name: string) => {
+    setProjects((current) => current.map((project) =>
+      project.name === name ? { ...project, status: "进行中" } : project,
+    ));
+    notify(`「${name}」已恢复到进行中项目`);
+  };
+
+  const deleteProject = (name: string) => {
+    setProjects((current) => current.filter((project) => project.name !== name));
+    setFavorites((current) => current.filter((item) => item !== name));
+    notify(`「${name}」已彻底删除`);
+  };
+
   return (
     <main className="app-page">
       <section className="app-shell">
@@ -207,7 +230,7 @@ export default function Home() {
             aria-expanded={profileOpen}
           >
             <AvatarVisual className="avatar" mode={avatarMode} previewUrl={avatarPreview} />
-            <span><b>用户名称</b><small>个人中心</small></span>
+            <span><b>{isLoggedIn ? "用户名称" : "登录"}</b><small>{isLoggedIn ? "个人中心" : "未登录"}</small></span>
             <span className="profile-more">•••</span>
           </button>
         </aside>
@@ -230,6 +253,7 @@ export default function Home() {
                 switchView("灵感");
                 notify("点击灵感卡片底部的＋，添加为创作内容参考");
               }}
+              recentItems={visibleRecentProjects}
             />
           )}
           {activeView === "项目" && (
@@ -240,6 +264,9 @@ export default function Home() {
               favorites={favorites}
               toggleFavorite={toggleFavorite}
               highlightedProject={highlightedProject}
+              onArchive={archiveProject}
+              onRestore={restoreProject}
+              onDelete={deleteProject}
               notify={notify}
             />
           )}
@@ -258,6 +285,7 @@ export default function Home() {
           )}
           {activeView === "导出" && (
             <ExportView
+              completedProjects={projects.filter((project) => project.status === "已完成")}
               styleReferences={styleReferences}
               onRemoveStyleReference={(title) =>
                 setStyleReferences((current) => current.filter((item) => item.title !== title))
@@ -284,6 +312,7 @@ export default function Home() {
           theme={theme}
           avatarMode={avatarMode}
           avatarPreview={avatarPreview}
+          isLoggedIn={isLoggedIn}
           onClose={() => setProfileOpen(false)}
           onThemeChange={changeTheme}
           onAvatarModeChange={(mode) => {
@@ -291,6 +320,8 @@ export default function Home() {
             setAvatarMode(mode);
           }}
           onAvatarFile={updateAvatarFromFile}
+          onLogin={() => setIsLoggedIn(true)}
+          onLogout={() => setIsLoggedIn(false)}
           notify={notify}
         />
       </section>
@@ -349,6 +380,7 @@ function CreatorView({
   onRemoveReference,
   onAddAlbumReference,
   onOpenInspiration,
+  recentItems,
 }: {
   prompt: string;
   setPrompt: (value: string) => void;
@@ -362,9 +394,20 @@ function CreatorView({
   onRemoveReference: (id: string) => void;
   onAddAlbumReference: (file: File) => void;
   onOpenInspiration: () => void;
+  recentItems: typeof recentProjects;
 }) {
   const [features, setFeatures] = useState(["圆形旋钮", "折叠结构"]);
   const [referenceMenuOpen, setReferenceMenuOpen] = useState(false);
+  const referenceMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!referenceMenuOpen) return;
+    const closeMenu = (event: PointerEvent) => {
+      if (!referenceMenuRef.current?.contains(event.target as Node)) setReferenceMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    return () => document.removeEventListener("pointerdown", closeMenu);
+  }, [referenceMenuOpen]);
 
   const addFeature = () => {
     const suggestions = ["柔和边角", "轻量材质", "单手收纳"];
@@ -425,7 +468,7 @@ function CreatorView({
                     <button className="reference-remove" onClick={() => onRemoveReference(reference.id)} aria-label={`删除参考 ${reference.title}`}>×</button>
                   </div>
                 ))}
-                <div className="add-reference-wrap">
+                <div className="add-reference-wrap" ref={referenceMenuRef}>
                   <button className="add-reference" onClick={() => setReferenceMenuOpen((open) => !open)} aria-expanded={referenceMenuOpen}>
                     <span>＋</span>添加参考
                   </button>
@@ -476,7 +519,7 @@ function CreatorView({
               <button onClick={onShowProjects}>查看全部 →</button>
             </div>
             <div className="project-grid">
-              {recentProjects.map((project, index) => (
+              {recentItems.map((project, index) => (
                 <button className="project-card" key={project.name} onClick={() => onShowProject(project.name)}>
                   <span className={`project-visual ${project.tone}`}><span className={`object-shape object-${index + 1}`} /><small>0{index + 1}</small></span>
                   <span className="project-info"><b>{project.name}</b><small>{project.meta}</small></span>
@@ -488,9 +531,9 @@ function CreatorView({
         </section>
         <aside className="insight-column">
           <article className="ai-card">
-            <div className="ai-title"><span className="ai-glyph">✦</span><div><small>AI 需求理解</small><h2>你的想法已经更清晰了</h2></div><span className="confidence">92%</span></div>
-            <div className="intent-block"><small>设计方向</small><p>面向年轻租房人群的折叠桌面灯，强调便携、克制和易收纳。</p></div>
-            <div className="tag-block"><small>提取标签</small><div className="tags"><span>轻量化</span><span>折叠</span><span>小户型</span><span>通勤</span><span>极简</span></div></div>
+            <div className="ai-title"><span className="ai-glyph">✦</span><div><small>AI 需求理解</small><h2>等待理解您的想法</h2></div><span className="confidence">—</span></div>
+            <div className="intent-block"><small>设计方向</small><textarea aria-label="AI 设计方向" defaultValue="AI会自动理解您的想法" /></div>
+            <div className="tag-block"><small>提取标签</small><div className="tags empty-tags" aria-label="暂无提取标签"><span /><span /></div></div>
             <button className="edit-intent" onClick={() => notify("需求编辑器将在后续版本接入")}>编辑需求摘要 <span>→</span></button>
           </article>
         </aside>
@@ -506,6 +549,9 @@ function ProjectsView({
   favorites,
   toggleFavorite,
   highlightedProject,
+  onArchive,
+  onRestore,
+  onDelete,
   notify,
 }: {
   projects: typeof allProjects;
@@ -514,12 +560,20 @@ function ProjectsView({
   favorites: string[];
   toggleFavorite: (name: string) => void;
   highlightedProject: string;
+  onArchive: (name: string) => void;
+  onRestore: (name: string) => void;
+  onDelete: (name: string) => void;
   notify: (message: string) => void;
 }) {
+  const [pendingAction, setPendingAction] = useState<{
+    type: "archive" | "delete";
+    project: (typeof allProjects)[number];
+  } | null>(null);
+
   return (
     <div className="view-panel">
       <PageHeader
-        eyebrow="项目空间 · 6 个项目"
+        eyebrow={`项目空间 · ${projects.length} 个项目`}
         title="所有探索，都在这里继续生长。"
         action={<button className="primary-btn compact" onClick={() => notify("已新建空白项目")}><span>＋</span> 新项目</button>}
       />
@@ -548,13 +602,13 @@ function ProjectsView({
               <button aria-label={`预览 ${project.name}`} onClick={() => notify(`正在预览「${project.name}」`)}><span>◉</span>预览</button>
               {project.status === "已归档" ? (
                 <>
-                  <button aria-label={`彻底删除 ${project.name}`} onClick={() => notify(`请再次确认是否彻底删除「${project.name}」`)}><span>×</span>彻底删除</button>
-                  <button aria-label={`撤销归档 ${project.name}`} onClick={() => notify(`「${project.name}」已恢复到项目列表`)}><span>↶</span>撤销归档</button>
+                  <button aria-label={`彻底删除 ${project.name}`} onClick={() => setPendingAction({ type: "delete", project })}><span>×</span>彻底删除</button>
+                  <button aria-label={`撤销归档 ${project.name}`} onClick={() => onRestore(project.name)}><span>↶</span>撤销归档</button>
                 </>
               ) : (
                 <>
                   <button aria-label={`编辑 ${project.name}`} onClick={() => notify(`正在编辑「${project.name}」`)}><span>✎</span>编辑</button>
-                  <button aria-label={`归档 ${project.name}`} onClick={() => notify(`「${project.name}」已移入归档`)}><span>□</span>归档</button>
+                  <button aria-label={`归档 ${project.name}`} onClick={() => setPendingAction({ type: "archive", project })}><span>□</span>归档</button>
                   <button
                     className={favorites.includes(project.name) ? "favorite active" : "favorite"}
                     aria-label={`${favorites.includes(project.name) ? "取消收藏" : "收藏"} ${project.name}`}
@@ -569,6 +623,38 @@ function ProjectsView({
         ))}
       </section>
       {projects.length === 0 && <div className="empty-state">这里还没有符合条件的项目。</div>}
+      {pendingAction && (
+        <div className="project-confirm-backdrop" role="presentation">
+          <section className="project-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="project-confirm-title">
+            <span className={pendingAction.type === "delete" ? "confirm-icon danger" : "confirm-icon"}>
+              {pendingAction.type === "delete" ? "×" : "□"}
+            </span>
+            <h2 id="project-confirm-title">
+              {pendingAction.type === "delete" ? "彻底删除项目？" : "确认归档项目？"}
+            </h2>
+            <p>
+              {pendingAction.type === "delete"
+                ? `「${pendingAction.project.name}」将被永久删除，并同步从最近项目与收藏中移除，此操作无法撤销。`
+                : pendingAction.project.status === "已完成"
+                  ? `归档「${pendingAction.project.name}」后，它将同步从导出页的可选项目中移除，但项目数据仍可恢复。`
+                  : `归档「${pendingAction.project.name}」后，它将从当前项目列表中移至“已归档”，之后可以撤销归档。`}
+            </p>
+            <div>
+              <button className="confirm-cancel" onClick={() => setPendingAction(null)}>取消</button>
+              <button
+                className={pendingAction.type === "delete" ? "confirm-submit danger" : "confirm-submit"}
+                onClick={() => {
+                  if (pendingAction.type === "delete") onDelete(pendingAction.project.name);
+                  else onArchive(pendingAction.project.name);
+                  setPendingAction(null);
+                }}
+              >
+                {pendingAction.type === "delete" ? "确认删除" : "确认归档"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -595,6 +681,20 @@ function InspirationView({
   notify: (message: string) => void;
 }) {
   const [addMenu, setAddMenu] = useState("");
+  const activeMenuRef = useRef<HTMLElement>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
+  const visiblePosts = filter === "为你推荐"
+    ? inspirationPosts
+    : inspirationPosts.filter((post) => post.categories.includes(filter));
+
+  useEffect(() => {
+    if (!addMenu) return;
+    const closeMenu = (event: PointerEvent) => {
+      if (!activeMenuRef.current?.contains(event.target as Node)) setAddMenu("");
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    return () => document.removeEventListener("pointerdown", closeMenu);
+  }, [addMenu]);
 
   return (
     <div className="view-panel inspiration-view">
@@ -610,13 +710,25 @@ function InspirationView({
       />
       <div className="inspiration-tabs" aria-label="灵感分类">
         {["为你推荐", "产品", "空间", "材质", "配色", "交互"].map((item) => (
-          <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>
+          <button
+            key={item}
+            className={filter === item ? "active" : ""}
+            onClick={() => {
+              setAddMenu("");
+              setFilter(item);
+              feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >{item}</button>
         ))}
       </div>
-      <div className="masonry-scroll">
+      <div className="masonry-scroll" ref={feedRef}>
         <section className="masonry-feed" aria-label={`${filter}灵感流`}>
-          {inspirationPosts.map((post, index) => (
-            <article className={`inspiration-card variant-${index % 4}`} key={post.title}>
+          {visiblePosts.map((post, index) => (
+            <article
+              className={`inspiration-card variant-${index % 4}`}
+              key={post.title}
+              ref={addMenu === post.title ? activeMenuRef : undefined}
+            >
               <button className={`inspiration-art ${post.tone} ${post.height}`} onClick={() => notify(`正在查看「${post.title}」`)}>
                 <span className={`art-object art-${(index % 8) + 1}`} />
                 <span className="art-tag">{post.tag}</span>
@@ -663,7 +775,7 @@ function InspirationView({
             </article>
           ))}
         </section>
-        <div className="feed-end"><span>✦</span>继续向下，灵感还在生长</div>
+        <div className="feed-end"><span>✦</span>{filter} · 共 {visiblePosts.length} 条灵感</div>
       </div>
     </div>
   );
@@ -681,23 +793,57 @@ function ProfileCenter({
   theme,
   avatarMode,
   avatarPreview,
+  isLoggedIn,
   onClose,
   onThemeChange,
   onAvatarModeChange,
   onAvatarFile,
+  onLogin,
+  onLogout,
   notify,
 }: {
   open: boolean;
   theme: ThemeMode;
   avatarMode: AvatarMode;
   avatarPreview: string;
+  isLoggedIn: boolean;
   onClose: () => void;
   onThemeChange: (theme: ThemeMode) => void;
   onAvatarModeChange: (mode: AvatarMode) => void;
   onAvatarFile: (file: File) => void;
+  onLogin: () => void;
+  onLogout: () => void;
   notify: (message: string) => void;
 }) {
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [loginPageOpen, setLoginPageOpen] = useState(false);
+  const [account, setAccount] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const avatarMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!avatarMenuOpen) return;
+    const closeMenu = (event: PointerEvent) => {
+      if (!avatarMenuRef.current?.contains(event.target as Node)) setAvatarMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    return () => document.removeEventListener("pointerdown", closeMenu);
+  }, [avatarMenuOpen]);
+
+  const submitLogin = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (account === "123456" && password === "123456") {
+      onLogin();
+      setLoginPageOpen(false);
+      setAccount("");
+      setPassword("");
+      setLoginError("");
+      notify("登录成功，欢迎回来");
+    } else {
+      setLoginError("账号或密码错误，请重新输入");
+    }
+  };
 
   return (
     <>
@@ -716,109 +862,100 @@ function ProfileCenter({
       >
         <header className="profile-drawer-header">
           <div>
-            <span className="drawer-eyebrow">PERSONAL CENTER</span>
-            <h2>个人中心</h2>
+            <span className="drawer-eyebrow">{loginPageOpen && !isLoggedIn ? "SIGN IN" : "PERSONAL CENTER"}</span>
+            <h2>{loginPageOpen && !isLoggedIn ? "登录" : "个人中心"}</h2>
           </div>
           <button className="drawer-close" onClick={onClose} aria-label="关闭个人中心">×</button>
         </header>
 
-        <section className="profile-identity">
-          <div className="profile-avatar-control">
-            <AvatarVisual className="profile-avatar-large" mode={avatarMode} previewUrl={avatarPreview} />
-            <button className="add-avatar-button" onClick={() => setAvatarMenuOpen((open) => !open)} aria-expanded={avatarMenuOpen}>
-              ＋ 添加头像
-            </button>
-            {avatarMenuOpen && (
-              <div className="avatar-source-menu">
-                <label>
-                  <span>▧</span>从相册中选取
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) onAvatarFile(file);
-                      setAvatarMenuOpen(false);
-                      event.target.value = "";
-                    }}
-                  />
-                </label>
-                <button onClick={() => { onAvatarModeChange("camera"); setAvatarMenuOpen(false); notify("已启用拍照头像预览"); }}><span>◉</span>拍照</button>
-                <button onClick={() => { onAvatarModeChange("inspiration"); setAvatarMenuOpen(false); notify("已从灵感中选择头像"); }}><span>✦</span>从灵感中添加</button>
+        {!isLoggedIn ? (
+          loginPageOpen ? (
+            <form className="login-page" onSubmit={submitLogin}>
+              <button type="button" className="login-back" onClick={() => { setLoginPageOpen(false); setLoginError(""); }}>← 返回</button>
+              <span className="login-mark"><i /></span>
+              <div className="login-copy"><h3>登录 SketchFlow</h3><p>登录后即可管理个人偏好、额度与隐私设置。</p></div>
+              <label><span>账号</span><input value={account} onChange={(event) => { setAccount(event.target.value); setLoginError(""); }} autoComplete="username" placeholder="请输入账号" /></label>
+              <label><span>密码</span><input type="password" value={password} onChange={(event) => { setPassword(event.target.value); setLoginError(""); }} autoComplete="current-password" placeholder="请输入密码" /></label>
+              {loginError && <p className="login-error" role="alert">{loginError}</p>}
+              <button className="login-submit" type="submit">确认登录 <span>→</span></button>
+              <small className="login-hint">演示账号与密码均为 123456</small>
+            </form>
+          ) : (
+            <section className="signed-out-state">
+              <span className="signed-out-avatar"><i /></span>
+              <h3>尚未登录</h3>
+              <p>登录后可查看 AI 使用额度、管理知识助手偏好与账户设置。</p>
+              <button onClick={() => setLoginPageOpen(true)}>登录 <span>→</span></button>
+              <small>登录前不会展示任何个人账户信息</small>
+            </section>
+          )
+        ) : (
+          <>
+            <section className="profile-identity">
+              <div className="profile-avatar-control" ref={avatarMenuRef}>
+                <AvatarVisual className="profile-avatar-large" mode={avatarMode} previewUrl={avatarPreview} />
+                <button className="add-avatar-button" onClick={() => setAvatarMenuOpen((open) => !open)} aria-expanded={avatarMenuOpen}>＋ 添加头像</button>
+                {avatarMenuOpen && (
+                  <div className="avatar-source-menu">
+                    <label><span>▧</span>从相册中选取<input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) onAvatarFile(file); setAvatarMenuOpen(false); event.target.value = ""; }} /></label>
+                    <button onClick={() => { onAvatarModeChange("camera"); setAvatarMenuOpen(false); notify("已启用拍照头像预览"); }}><span>◉</span>拍照</button>
+                    <button onClick={() => { onAvatarModeChange("inspiration"); setAvatarMenuOpen(false); notify("已从灵感中选择头像"); }}><span>✦</span>从灵感中添加</button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div>
-            <b>用户名称</b>
-            <small>SketchFlow 创作者</small>
-          </div>
-          <span className="member-chip">创作会员</span>
-        </section>
+              <div><b>用户名称</b><small>SketchFlow 创作者</small></div>
+              <span className="member-chip">创作会员</span>
+            </section>
 
-        <section className="theme-card">
-          <div className="theme-card-copy">
-            <span className="theme-icon">{theme === "light" ? "☼" : "◐"}</span>
-            <div><b>界面风格</b><small>选择更舒适的创作环境</small></div>
-          </div>
-          <div className="theme-switch" role="group" aria-label="界面风格">
-            <button
-              className={theme === "light" ? "active" : ""}
-              aria-pressed={theme === "light"}
-              onClick={() => onThemeChange("light")}
-            >
-              <span>☼</span> 浅色
-            </button>
-            <button
-              className={theme === "dark" ? "active" : ""}
-              aria-pressed={theme === "dark"}
-              onClick={() => onThemeChange("dark")}
-            >
-              <span>◐</span> 深色
-            </button>
-          </div>
-        </section>
+            <section className="theme-card">
+              <div className="theme-card-copy"><span className="theme-icon">{theme === "light" ? "☼" : "◐"}</span><div><b>界面风格</b><small>选择更舒适的创作环境</small></div></div>
+              <div className="theme-switch" role="group" aria-label="界面风格">
+                <button className={theme === "light" ? "active" : ""} aria-pressed={theme === "light"} onClick={() => onThemeChange("light")}><span>☼</span> 浅色</button>
+                <button className={theme === "dark" ? "active" : ""} aria-pressed={theme === "dark"} onClick={() => onThemeChange("dark")}><span>◐</span> 深色</button>
+              </div>
+            </section>
 
-        <nav className="profile-menu" aria-label="个人中心功能">
-          {profileItems.map((item) => (
-            <button
-              key={item.title}
-              onClick={() => notify(`${item.title}功能已打开`)}
-            >
-              <span className="profile-menu-icon">{item.icon}</span>
-              <span><b>{item.title}</b><small>{item.detail}</small></span>
-              <i>›</i>
-            </button>
-          ))}
-        </nav>
+            <nav className="profile-menu" aria-label="个人中心功能">
+              {profileItems.map((item) => (
+                <button key={item.title} onClick={() => notify(`${item.title}功能已打开`)}><span className="profile-menu-icon">{item.icon}</span><span><b>{item.title}</b><small>{item.detail}</small></span><i>›</i></button>
+              ))}
+            </nav>
 
-        <footer className="profile-drawer-footer">
-          <span><i /> 服务状态正常</span>
-          <button onClick={() => notify("已退出当前账号")}>退出登录</button>
-        </footer>
+            <footer className="profile-drawer-footer">
+              <span><i /> 服务状态正常</span>
+              <button onClick={() => { onLogout(); notify("已退出当前账号"); }}>退出登录</button>
+            </footer>
+          </>
+        )}
       </aside>
     </>
   );
 }
 
 function ExportView({
+  completedProjects,
   styleReferences,
   onRemoveStyleReference,
   onOpenInspiration,
   notify,
 }: {
+  completedProjects: typeof allProjects;
   styleReferences: (typeof inspirationPosts)[number][];
   onRemoveStyleReference: (title: string) => void;
   onOpenInspiration: () => void;
   notify: (message: string) => void;
 }) {
-  const [project, setProject] = useState(completedProjects[0].name);
+  const [project, setProject] = useState(completedProjects[0]?.name ?? "");
   const [format, setFormat] = useState<"PDF" | "PPT">("PPT");
-  const [copy, setCopy] = useState("项目背景、设计目标、核心亮点、方案演进与最终成果");
+  const [copy, setCopy] = useState("请输入设计文案");
   const [generating, setGenerating] = useState(false);
   const [ready, setReady] = useState(false);
   const [history, setHistory] = useState([
     { id: 1, project: "便携咖啡研磨器", format: "PPT", time: "今天 10:24" },
     { id: 2, project: "折叠户外水壶", format: "PDF", time: "7 月 18 日" },
+    { id: 3, project: "便携咖啡研磨器", format: "PDF", time: "7 月 15 日" },
+    { id: 4, project: "折叠户外水壶", format: "PPT", time: "7 月 11 日" },
+    { id: 5, project: "便携咖啡研磨器", format: "PPT", time: "7 月 5 日" },
   ]);
 
   const createDocument = () => {
@@ -853,6 +990,7 @@ function ExportView({
                 <span><b>{item.name}</b><small>{item.versions} 个版本</small></span><i>{project === item.name ? "✓" : ""}</i>
               </button>
             ))}
+            {completedProjects.length === 0 && <p className="no-export-projects">暂无已完成项目，请先完成一个项目后再导出。</p>}
           </div>
 
           <div className="export-step"><span>02</span><div><b>设计文案</b><small>AI 将依据这段内容生成叙事结构</small></div></div>
@@ -889,7 +1027,7 @@ function ExportView({
           </div>
           <button
             className="primary-btn export-generate"
-            disabled={generating || !copy.trim()}
+            disabled={generating || !copy.trim() || !project}
             onClick={ready ? () => notify(`${project} 的 ${format} 文件已进入下载队列`) : createDocument}
           >
             {generating ? "AI 正在编排内容…" : ready ? `下载 ${format} 文件` : `生成 ${format} 方案`}<span>{generating ? "◌" : ready ? "↓" : "→"}</span>

@@ -730,6 +730,184 @@ textarea:focus-visible {
   color: #d5684d;
 }
 
+.signed-out-state,
+.login-page {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.signed-out-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px 54px;
+  text-align: center;
+}
+
+.signed-out-avatar,
+.login-mark {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  position: relative;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 25px;
+  background: linear-gradient(145deg, var(--white), var(--lime-soft));
+  box-shadow: 0 16px 36px rgba(32, 33, 38, 0.1);
+}
+
+.signed-out-avatar::before,
+.login-mark::before {
+  content: "";
+  width: 34px;
+  height: 34px;
+  border-radius: 999px 999px 8px 999px;
+  background: #2c2d31;
+  transform: rotate(38deg);
+}
+
+.signed-out-avatar i,
+.login-mark i {
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  border-radius: 50%;
+  background: var(--lime);
+}
+
+.signed-out-state h3 {
+  margin: 22px 0 0;
+  font-size: 20px;
+}
+
+.signed-out-state p {
+  max-width: 250px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.signed-out-state > button,
+.login-submit {
+  width: min(240px, 100%);
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 23px;
+  border: 0;
+  border-radius: 13px;
+  background: #202126;
+  color: white;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.signed-out-state > button span,
+.login-submit span {
+  color: var(--lime);
+}
+
+.signed-out-state > small {
+  margin-top: 13px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.login-page {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px 0;
+}
+
+.login-back {
+  align-self: flex-start;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.login-mark {
+  width: 62px;
+  height: 62px;
+  margin: 18px auto 0;
+  border-radius: 20px;
+}
+
+.login-copy {
+  margin: 16px 0 18px;
+  text-align: center;
+}
+
+.login-copy h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.login-copy p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.login-page > label {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.login-page > label > span {
+  color: #686a70;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.login-page input {
+  width: 100%;
+  height: 43px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  outline: 0;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.login-page input:focus {
+  border-color: #bace60;
+  box-shadow: 0 0 0 4px rgba(216, 245, 104, 0.18);
+}
+
+.login-error {
+  margin: 9px 0 0;
+  color: #d5654b;
+  font-size: 8px;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 17px;
+}
+
+.login-hint {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 7px;
+  text-align: center;
+}
+
 .workspace {
   min-width: 0;
   min-height: 0;
@@ -1517,11 +1695,23 @@ textarea:focus-visible {
   color: #929398;
 }
 
-.intent-block p {
-  margin: 8px 0 0;
+.intent-block textarea {
+  width: 100%;
+  min-height: 62px;
+  margin-top: 8px;
+  resize: none;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.055);
   color: #d6d6d8;
-  font-size: 11px;
-  line-height: 1.75;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.intent-block textarea:focus {
+  border-color: rgba(216, 245, 104, 0.5);
 }
 
 .tags {
@@ -2046,6 +2236,91 @@ textarea:focus-visible {
   text-align: center;
 }
 
+.project-confirm-backdrop {
+  display: grid;
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  place-items: center;
+  padding: 20px;
+  background: rgba(23, 24, 28, 0.48);
+  backdrop-filter: blur(5px);
+}
+
+.project-confirm-dialog {
+  width: min(380px, 100%);
+  padding: 25px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--white);
+  box-shadow: 0 24px 70px rgba(21, 22, 25, 0.3);
+  text-align: center;
+  animation: confirm-in 190ms ease-out;
+}
+
+.confirm-icon {
+  width: 45px;
+  height: 45px;
+  display: grid;
+  margin: 0 auto;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--lime-soft);
+  color: #80932f;
+  font-size: 18px;
+}
+
+.confirm-icon.danger {
+  background: #fff0e9;
+  color: #d5654b;
+}
+
+.project-confirm-dialog h2 {
+  margin: 16px 0 0;
+  font-size: 17px;
+}
+
+.project-confirm-dialog p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.75;
+}
+
+.project-confirm-dialog > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.project-confirm-dialog button {
+  min-height: 39px;
+  border-radius: 11px;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.confirm-cancel {
+  border: 1px solid var(--line);
+  background: transparent;
+}
+
+.confirm-submit {
+  border: 0;
+  background: #202126;
+  color: white;
+}
+
+.confirm-submit.danger {
+  background: #d5654b;
+}
+
+@keyframes confirm-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
 .inspiration-search {
   width: min(310px, 34vw);
   height: 43px;
@@ -2372,6 +2647,14 @@ textarea:focus-visible {
   font-size: 8px;
 }
 
+.tags.empty-tags span {
+  width: 42px;
+  height: 25px;
+  padding: 0;
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.025);
+}
+
 .inspiration-add-panel > button {
   min-width: 0;
   display: grid;
@@ -2472,6 +2755,7 @@ textarea:focus-visible {
 
 .export-settings {
   padding: 22px;
+  overflow: hidden;
 }
 
 .export-preview {
@@ -2626,6 +2910,17 @@ textarea:focus-visible {
   font-style: normal;
 }
 
+.no-export-projects {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 13px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
 .export-copy-box {
   margin-top: 13px;
   overflow: hidden;
@@ -2680,10 +2975,11 @@ textarea:focus-visible {
 .export-history {
   display: grid;
   gap: 7px;
-  max-height: 142px;
+  height: 208px;
   margin-top: 13px;
   overflow-y: auto;
   padding-right: 4px;
+  overscroll-behavior: contain;
   scrollbar-color: #c9c8c4 transparent;
   scrollbar-width: thin;
 }
