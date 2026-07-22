@@ -359,7 +359,7 @@ textarea:focus-visible {
   border-radius: 12px;
   background: var(--white);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
   font-size: 22px;
   line-height: 1;
   transition: background 160ms ease, color 160ms ease, transform 160ms ease;
@@ -2186,15 +2186,13 @@ textarea:focus-visible {
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.83);
   color: #56585d;
-  opacity: 0;
+  opacity: 0.72;
   font-size: 9px;
-  transform: translateY(4px);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transform: none;
 }
 
 .project-preview:hover .preview-label {
-  opacity: 1;
-  transform: translateY(0);
+  opacity: 0.72;
 }
 
 .concept-object {
@@ -2343,7 +2341,7 @@ textarea:focus-visible {
 
 .project-actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--line);
 }
 
@@ -2382,7 +2380,7 @@ textarea:focus-visible {
 }
 
 .project-actions.archived-actions {
-  grid-template-columns: 0.8fr 1.1fr 1.1fr;
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .project-actions.archived-actions button {

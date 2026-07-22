@@ -40,11 +40,16 @@ test("keeps Kimi credentials server-side and enables the requested workflows", a
   assert.match(page, /compressReferenceFile/);
   assert.match(page, /composeReferenceBoard/);
   assert.match(page, /campaign_poster/);
+  assert.match(page, /mode:\s*"refine"/);
+  assert.match(page, /正在理解并优化/);
+  assert.doesNotMatch(page, /正在预览/);
+  assert.doesNotMatch(page, /aria-label=\{`预览/);
   assert.match(page, /上传项目到灵感/);
   assert.match(page, /pptx\.writeFile/);
   assert.match(route, /photo\.\*overload/);
   assert.match(route, /outputTypes/);
   assert.match(route, /max_completion_tokens:\s*6500/);
+  assert.match(route, /input\.mode === "refine"/);
   assert.match(envExample, /^MOONSHOT_API_KEY=/m);
   assert.match(packageJson, /"pptxgenjs"/);
 });

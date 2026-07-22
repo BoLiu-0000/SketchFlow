@@ -53,7 +53,7 @@ async function callKimi(body: Record<string, unknown>) {
 export async function POST(request: Request) {
   try {
     const input = await request.json() as {
-      mode?: "create" | "export";
+      mode?: "refine" | "create" | "export";
       prompt?: string;
       features?: string[];
       references?: string[];
@@ -62,6 +62,47 @@ export async function POST(request: Request) {
       copy?: string;
       styleReferences?: string[];
     };
+
+    if (input.mode === "refine") {
+      if (!input.prompt?.trim()) return NextResponse.json({ error: "请先输入一个初步想法" }, { status: 400 });
+      const content: Array<Record<string, unknown>> = [
+        {
+          type: "text",
+          text: `请理解并优化下面的设计想法。保留用户原始意图，不凭空改变产品类别；补充目标用户、使用场景、核心功能、形态、材质、交互和视觉氛围中真正有帮助的信息。若有参考图，只提炼可迁移的形态、材质、配色和构图特征。最终 optimizedPrompt 必须是一段可直接用于后续视觉方案生成的完整中文描述，控制在 120–600 个中文字符，不要使用 markdown，也不要解释优化过程。
+
+原始想法：${input.prompt.slice(0, 1200)}
+已有特征：${(input.features || []).slice(0, 10).join("、") || "无"}
+预期输出类型：${input.renderMode || "auto"}`,
+        },
+      ];
+      for (const url of (input.references || []).filter((item) => item.startsWith("data:image/") && item.length <= 5_500_000).slice(0, 1)) {
+        content.unshift({ type: "image_url", image_url: { url } });
+      }
+      const result = await callKimi({
+        messages: [
+          { role: "system", content: "你是资深产品设计策略师，擅长把零散想法补全为准确、具体、可执行的创作描述。禁止模板化套话，禁止改变用户核心诉求。" },
+          { role: "user", content },
+        ],
+        max_completion_tokens: 3200,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "sketchflow_refined_prompt",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                optimizedPrompt: { type: "string" },
+                addedDetails: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 6 },
+              },
+              required: ["optimizedPrompt", "addedDetails"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      return NextResponse.json(result);
+    }
 
     if (input.mode === "create") {
       if (!input.prompt?.trim()) return NextResponse.json({ error: "请输入设计需求" }, { status: 400 });

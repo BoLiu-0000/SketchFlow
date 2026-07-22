@@ -815,6 +815,7 @@ function CreatorView({
 }) {
   const [features, setFeatures] = useState(["圆形旋钮", "折叠结构"]);
   const [renderMode, setRenderMode] = useState<RenderMode>("auto");
+  const [refiningPrompt, setRefiningPrompt] = useState(false);
   const [referenceMenuOpen, setReferenceMenuOpen] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode | null>(null);
@@ -865,6 +866,36 @@ function CreatorView({
     }
   };
 
+  const refinePrompt = async () => {
+    if (!prompt.trim()) {
+      notify("请先输入一个初步想法");
+      return;
+    }
+    setRefiningPrompt(true);
+    let requestTimeout: number | undefined;
+    try {
+      const rawReferences = references.filter((item) => item.previewUrl?.startsWith("data:image/")).slice(0, 4).map((item) => item.previewUrl as string);
+      const referenceBoard = await composeReferenceBoard(rawReferences);
+      const controller = new AbortController();
+      requestTimeout = window.setTimeout(() => controller.abort(), 120000);
+      const response = await fetch("/api/kimi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ mode: "refine", prompt: prompt.trim(), features, renderMode, references: referenceBoard }),
+      });
+      const payload = await response.json() as { optimizedPrompt?: string; error?: string };
+      if (!response.ok || !payload.optimizedPrompt) throw new Error(payload.error || "想法补充失败");
+      setPrompt(payload.optimizedPrompt.slice(0, 800));
+      notify("Kimi 已理解并优化输入内容");
+    } catch (error) {
+      notify(error instanceof DOMException && error.name === "AbortError" ? "补充想法用时较长，请稍后重试" : error instanceof Error ? error.message : "想法补充失败");
+    } finally {
+      if (requestTimeout) window.clearTimeout(requestTimeout);
+      setRefiningPrompt(false);
+    }
+  };
+
   return (
     <>
     <div className="view-panel">
@@ -905,7 +936,7 @@ function CreatorView({
                 placeholder="请输入你的想法"
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
-                maxLength={240}
+                maxLength={800}
               />
               <div className="prompt-footer">
                 <div className="input-tools" ref={voiceMenuRef}>
@@ -917,7 +948,7 @@ function CreatorView({
                     </div>
                   )}
                 </div>
-                <span>{promptCount}/240</span>
+                <span>{promptCount}/800</span>
               </div>
               {audioReferenceUrl && (
                 <div className="voice-attachment">
@@ -982,7 +1013,7 @@ function CreatorView({
               </div>
             </div>
             <div className="prompt-actions">
-              <button className="ghost-btn" onClick={() => notify("AI 已帮你补全使用场景")}><span>✦</span> 帮我补充想法</button>
+              <button className="ghost-btn" disabled={refiningPrompt || generating || !prompt.trim()} onClick={refinePrompt}><span>{refiningPrompt ? "◌" : "✦"}</span> {refiningPrompt ? "正在理解并优化…" : "帮我补充想法"}</button>
               <label className="render-mode-select"><span>输出类型</span><select value={renderMode} onChange={(event) => setRenderMode(event.target.value as RenderMode)}><option value="auto">智能判断</option><option value="concept_sketch">概念草图</option><option value="3d_render">3D 渲染图</option><option value="complex_render">复杂场景效果图</option><option value="campaign_poster">宣传海报</option></select></label>
               <button className="primary-btn" disabled={generating || !prompt.trim()} onClick={() => generate(features, renderMode)}>
                 {generating ? "正在深度理解与生成…" : renderMode === "auto" ? "智能生成视觉方案" : renderMode === "concept_sketch" ? "生成概念草图" : renderMode === "3d_render" ? "生成 3D 渲染方案" : renderMode === "complex_render" ? "生成复杂效果方案" : "生成宣传海报方案"}<span>{generating ? "◌" : "→"}</span>
@@ -1170,18 +1201,17 @@ function ProjectsView({
       <section className="all-project-grid" aria-label="历史项目">
         {projects.map((project, index) => (
           <article className={highlightedProject === project.name ? "project-panel highlighted" : "project-panel"} key={project.name}>
-            <button className={`project-preview ${project.tone}`} onClick={() => notify(`正在预览「${project.name}」`)}>
+            <div className={`project-preview ${project.tone}`}>
               <span className="preview-index">0{index + 1}</span>
               <span className={`concept-object concept-${project.pattern}`} />
-              <span className="preview-label">点击预览</span>
-            </button>
+              <span className="preview-label">项目封面</span>
+            </div>
             <div className="project-panel-copy">
               <div><span className={`status-dot ${project.status}`} />{project.status}</div>
               <h2>{project.name}</h2>
               <p>{project.versions} 个版本 · {project.meta}</p>
             </div>
             <div className={project.status === "已归档" ? "project-actions archived-actions" : "project-actions"}>
-              <button aria-label={`预览 ${project.name}`} onClick={() => notify(`正在预览「${project.name}」`)}><span>◉</span>预览</button>
               {project.status === "已归档" ? (
                 <>
                   <button aria-label={`彻底删除 ${project.name}`} onClick={() => setPendingAction({ type: "delete", project })}><span>×</span>彻底删除</button>
