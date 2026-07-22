@@ -12,6 +12,32 @@ type CreationReference = {
   source: "默认" | "相册" | "灵感";
   previewUrl?: string;
 };
+type ConceptSketch = {
+  id: string;
+  title: string;
+  caption: string;
+  form: "fold" | "cylinder" | "arch" | "module" | "sphere";
+  palette: "orange" | "blue" | "green" | "rose" | "sand" | "violet";
+  createdAt: string;
+};
+type EditableTextBlock = {
+  id: string;
+  text: string;
+  fontSize: number;
+  width: number;
+  height: number;
+};
+type GenerationResult = {
+  understanding: string;
+  directions: string[];
+  tags: string[];
+  concept: Omit<ConceptSketch, "id" | "createdAt">;
+};
+type DeckResult = {
+  title: string;
+  subtitle: string;
+  slides: Array<{ title: string; body: string; bullets: string[] }>;
+};
 type Project = {
   name: string;
   meta: string;
@@ -19,6 +45,10 @@ type Project = {
   tone: string;
   status: string;
   pattern: number;
+  aiUnderstanding: string;
+  aiTags: string[];
+  sketches: ConceptSketch[];
+  textBlocks: EditableTextBlock[];
 };
 
 type VoiceMode = "audio" | "text";
@@ -44,13 +74,17 @@ declare global {
   }
 }
 
+const seedSketch = (id: string, title: string, caption: string, form: ConceptSketch["form"], palette: ConceptSketch["palette"]): ConceptSketch => ({
+  id, title, caption, form, palette, createdAt: "早期方案",
+});
+const emptyProjectFields = { aiUnderstanding: "尚未生成 AI 需求理解", aiTags: [] as string[], sketches: [] as ConceptSketch[], textBlocks: [] as EditableTextBlock[] };
 const allProjects: Project[] = [
-  { name: "模块化通勤灯", meta: "更新于 5 分钟前", versions: 8, tone: "orange", status: "进行中", pattern: 1 },
-  { name: "桌面空气净化器", meta: "更新于昨天", versions: 4, tone: "blue", status: "进行中", pattern: 2 },
-  { name: "便携咖啡研磨器", meta: "更新于 3 天前", versions: 12, tone: "green", status: "已完成", pattern: 3 },
-  { name: "陪伴型香氛音箱", meta: "更新于 7 月 12 日", versions: 6, tone: "rose", status: "进行中", pattern: 4 },
-  { name: "折叠户外水壶", meta: "更新于 7 月 8 日", versions: 9, tone: "sand", status: "已完成", pattern: 5 },
-  { name: "无障碍厨房计时器", meta: "更新于 6 月 26 日", versions: 5, tone: "violet", status: "已归档", pattern: 6 },
+  { name: "模块化通勤灯", meta: "更新于 5 分钟前", versions: 8, tone: "orange", status: "进行中", pattern: 1, ...emptyProjectFields },
+  { name: "桌面空气净化器", meta: "更新于昨天", versions: 4, tone: "blue", status: "进行中", pattern: 2, ...emptyProjectFields },
+  { name: "便携咖啡研磨器", meta: "更新于 3 天前", versions: 12, tone: "green", status: "已完成", pattern: 3, aiUnderstanding: "面向轻量户外与家庭使用，强调单手操作、低残粉和可拆洗结构。", aiTags: ["便携", "单手操作", "易清洁"], sketches: [seedSketch("coffee-1", "环抱式研磨仓", "圆柱主仓与环形握持区形成稳定、紧凑的使用姿态。", "cylinder", "green")], textBlocks: [] },
+  { name: "陪伴型香氛音箱", meta: "更新于 7 月 12 日", versions: 6, tone: "rose", status: "进行中", pattern: 4, ...emptyProjectFields },
+  { name: "折叠户外水壶", meta: "更新于 7 月 8 日", versions: 9, tone: "sand", status: "已完成", pattern: 5, aiUnderstanding: "通过可压缩折叠结构降低收纳体积，同时保留可靠握持与饮水体验。", aiTags: ["折叠", "户外", "轻量"], sketches: [seedSketch("bottle-1", "折线式壶身", "连续折面引导压缩方向，并用顶部硬环保持饮水口稳定。", "fold", "sand")], textBlocks: [] },
+  { name: "无障碍厨房计时器", meta: "更新于 6 月 26 日", versions: 5, tone: "violet", status: "已归档", pattern: 6, ...emptyProjectFields },
 ];
 
 const inspirationPosts = [
@@ -65,6 +99,52 @@ const inspirationPosts = [
   { title: "机械细节也可以很温柔", author: "Index Works", tag: "细节", tone: "orange", height: "short", categories: ["产品", "交互"] },
   { title: "在桌面上创造微型地景", author: "Field Notes", tag: "概念", tone: "violet", height: "tall", categories: ["空间"] },
 ];
+
+function renderInspirationReference(tone: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 960;
+  canvas.height = 720;
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
+  const palette: Record<string, [string, string, string]> = {
+    lime: ["#edf1d7", "#a9bf64", "#33462c"], clay: ["#efe2d8", "#bd8872", "#4b342f"],
+    glass: ["#e4eff0", "#86aeb4", "#33494d"], blue: ["#e1ebf2", "#6d96b4", "#273d4d"],
+    ink: ["#dedfdc", "#59605c", "#1f2823"], sage: ["#e4eadf", "#7d9a77", "#30422f"],
+    paper: ["#f2eee3", "#c6ae82", "#493f31"], stone: ["#e8e5df", "#9a948a", "#3e3b37"],
+    orange: ["#f4e3d6", "#da8a50", "#4f3526"], violet: ["#e9e3f0", "#917ca9", "#3b3047"],
+  };
+  const [light, accent, dark] = palette[tone] || palette.sage;
+  const gradient = context.createLinearGradient(0, 0, 960, 720);
+  gradient.addColorStop(0, light);
+  gradient.addColorStop(1, "#faf8f2");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 960, 720);
+  context.strokeStyle = `${dark}35`;
+  context.lineWidth = 1;
+  for (let x = 0; x < 960; x += 60) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, 720); context.stroke(); }
+  for (let y = 0; y < 720; y += 60) { context.beginPath(); context.moveTo(0, y); context.lineTo(960, y); context.stroke(); }
+  context.save();
+  context.translate(480, 350);
+  context.rotate(-0.12);
+  context.fillStyle = accent;
+  context.strokeStyle = dark;
+  context.lineWidth = 9;
+  context.beginPath();
+  context.roundRect(-180, -155, 360, 310, 84);
+  context.fill();
+  context.stroke();
+  context.fillStyle = light;
+  context.beginPath();
+  context.ellipse(0, -95, 112, 38, 0, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = dark;
+  context.beginPath();
+  context.arc(0, 30, 47, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+  return canvas.toDataURL("image/jpeg", 0.86);
+}
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewName>("创作");
@@ -88,6 +168,9 @@ export default function Home() {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [editingProjectName, setEditingProjectName] = useState("");
+  const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
+  const [publishedProjectNames, setPublishedProjectNames] = useState<string[]>([]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -120,16 +203,37 @@ export default function Home() {
   };
 
   const switchView = (view: ViewName) => {
+    setEditingProjectName("");
     setActiveView(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const generate = () => {
+  const generate = async (features: string[]) => {
+    if (!prompt.trim()) {
+      notify("请先描述你的设计想法");
+      return;
+    }
     setGenerating(true);
-    window.setTimeout(() => {
+    try {
+      const response = await fetch("/api/kimi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "create",
+          prompt: prompt.trim(),
+          features,
+          references: creationReferences.filter((item) => item.previewUrl?.startsWith("data:image/")).slice(0, 3).map((item) => item.previewUrl),
+        }),
+      });
+      const payload = await response.json() as GenerationResult & { error?: string };
+      if (!response.ok) throw new Error(payload.error || "生成失败");
+      setGenerationResult(payload);
+      notify("Kimi 已完成需求理解与概念草图方案");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "生成失败，请稍后重试");
+    } finally {
       setGenerating(false);
-      notify("新方案已生成，并保存为 V.05");
-    }, 1100);
+    }
   };
 
   const toggleFavorite = (name: string) => {
@@ -168,7 +272,7 @@ export default function Home() {
     setCreationReferences((current) =>
       current.some((item) => item.title === post.title)
         ? current
-        : [...current, { id: `inspiration-${post.title}`, title: post.title, tone: post.tone, source: "灵感" }],
+        : [...current, { id: `inspiration-${post.title}`, title: post.title, tone: post.tone, source: "灵感", previewUrl: renderInspirationReference(post.tone) }],
     );
     switchView("创作");
     notify(`已将「${post.title}」添加到创作内容参考`);
@@ -182,12 +286,15 @@ export default function Home() {
   };
 
   const addAlbumReference = (file: File) => {
-    const previewUrl = URL.createObjectURL(file);
-    setCreationReferences((current) => [
-      ...current,
-      { id: `album-${Date.now()}`, title: file.name, tone: "album", source: "相册", previewUrl },
-    ]);
-    notify("已从相册添加创作参考");
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCreationReferences((current) => [
+        ...current,
+        { id: `album-${Date.now()}`, title: file.name, tone: "album", source: "相册", previewUrl: String(reader.result) },
+      ]);
+      notify("已从相册添加创作参考");
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeCreationReference = (id: string) => {
@@ -231,12 +338,35 @@ export default function Home() {
       return false;
     }
     setProjects((current) => [
-      { name, tone, pattern, versions: 0, status: "进行中", meta: "刚刚创建" },
+      { name, tone, pattern, versions: 0, status: "进行中", meta: "刚刚创建", ...emptyProjectFields },
       ...current,
     ]);
     setNewProjectOpen(false);
     notify(`新项目「${name}」已创建`);
     return true;
+  };
+
+  const saveGeneration = (projectName: string) => {
+    if (!generationResult) return;
+    const sketch: ConceptSketch = {
+      ...generationResult.concept,
+      id: `sketch-${Date.now()}`,
+      createdAt: "刚刚生成",
+    };
+    setProjects((current) => current.map((project) => project.name === projectName ? {
+      ...project,
+      aiUnderstanding: generationResult.understanding,
+      aiTags: generationResult.tags,
+      sketches: [sketch, ...project.sketches],
+      versions: project.versions + 1,
+      meta: "刚刚更新",
+    } : project));
+    setGenerationResult(null);
+    notify(`结果已保存到「${projectName}」`);
+  };
+
+  const updateProject = (updated: Project) => {
+    setProjects((current) => current.map((project) => project.name === updated.name ? updated : project));
   };
 
   return (
@@ -274,7 +404,14 @@ export default function Home() {
         </aside>
 
         <div className="workspace">
-          {activeView === "创作" && (
+          {editingProjectName ? (
+            <ProjectEditor
+              project={projects.find((item) => item.name === editingProjectName) ?? projects[0]}
+              onBack={() => setEditingProjectName("")}
+              onUpdate={updateProject}
+              notify={notify}
+            />
+          ) : activeView === "创作" ? (
             <CreatorView
               prompt={prompt}
               setPrompt={setPrompt}
@@ -293,9 +430,9 @@ export default function Home() {
               }}
               recentItems={visibleRecentProjects}
               onNewProject={() => setNewProjectOpen(true)}
+              result={generationResult}
             />
-          )}
-          {activeView === "项目" && (
+          ) : activeView === "项目" ? (
             <ProjectsView
               projects={visibleProjects}
               filter={projectFilter}
@@ -308,9 +445,9 @@ export default function Home() {
               onDelete={deleteProject}
               onNewProject={() => setNewProjectOpen(true)}
               notify={notify}
+              onEdit={setEditingProjectName}
             />
-          )}
-          {activeView === "灵感" && (
+          ) : activeView === "灵感" ? (
             <InspirationView
               filter={inspirationFilter}
               setFilter={setInspirationFilter}
@@ -321,9 +458,14 @@ export default function Home() {
               onAddToCreator={addInspirationToCreation}
               onAddToStyleReference={addStyleReference}
               notify={notify}
+              projects={projects.filter((project) => project.status !== "已归档")}
+              publishedProjectNames={publishedProjectNames}
+              onUploadProject={(name) => {
+                setPublishedProjectNames((current) => current.includes(name) ? current : [name, ...current]);
+                notify(`「${name}」已上传到灵感广场`);
+              }}
             />
-          )}
-          {activeView === "导出" && (
+          ) : (
             <ExportView
               completedProjects={projects.filter((project) => project.status === "已完成")}
               styleReferences={styleReferences}
@@ -369,6 +511,14 @@ export default function Home() {
           onClose={() => setNewProjectOpen(false)}
           onCreate={createProject}
         />
+        {generationResult && (
+          <SaveGenerationDialog
+            result={generationResult}
+            projects={projects.filter((project) => project.status !== "已归档")}
+            onClose={() => setGenerationResult(null)}
+            onSave={saveGeneration}
+          />
+        )}
       </section>
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
@@ -573,12 +723,13 @@ function CreatorView({
   onOpenInspiration,
   recentItems,
   onNewProject,
+  result,
 }: {
   prompt: string;
   setPrompt: (value: string) => void;
   promptCount: number;
   generating: boolean;
-  generate: () => void;
+  generate: (features: string[]) => void;
   notify: (message: string) => void;
   onShowProjects: () => void;
   onShowProject: (name: string) => void;
@@ -588,6 +739,7 @@ function CreatorView({
   onOpenInspiration: () => void;
   recentItems: Project[];
   onNewProject: () => void;
+  result: GenerationResult | null;
 }) {
   const [features, setFeatures] = useState(["圆形旋钮", "折叠结构"]);
   const [referenceMenuOpen, setReferenceMenuOpen] = useState(false);
@@ -758,7 +910,7 @@ function CreatorView({
             </div>
             <div className="prompt-actions">
               <button className="ghost-btn" onClick={() => notify("AI 已帮你补全使用场景")}><span>✦</span> 帮我补充想法</button>
-              <button className="primary-btn" disabled={generating || !prompt.trim()} onClick={generate}>
+              <button className="primary-btn" disabled={generating || !prompt.trim()} onClick={() => generate(features)}>
                 {generating ? "正在生成…" : "生成概念草图"}<span>{generating ? "◌" : "→"}</span>
               </button>
             </div>
@@ -781,9 +933,10 @@ function CreatorView({
         </section>
         <aside className="insight-column">
           <article className="ai-card">
-            <div className="ai-title"><span className="ai-glyph">✦</span><div><small>AI 需求理解</small><h2>等待理解您的想法</h2></div><span className="confidence">—</span></div>
-            <div className="intent-block"><small>设计方向</small><textarea aria-label="AI 设计方向" defaultValue="AI会自动理解您的想法" /></div>
-            <div className="tag-block"><small>提取标签</small><div className="tags empty-tags" aria-label="暂无提取标签"><span /><span /></div></div>
+            <div className="ai-title"><span className="ai-glyph">✦</span><div><small>KIMI K3 · AI 需求理解</small><h2>{result ? result.concept.title : "等待理解您的想法"}</h2></div><span className="confidence">{result ? "已完成" : "—"}</span></div>
+            <div className="intent-block"><small>设计方向</small><textarea aria-label="AI 设计方向" readOnly value={result ? [result.understanding, ...result.directions].join("\n\n") : "AI会自动理解您的想法"} /></div>
+            <div className="tag-block"><small>提取标签</small>{result ? <div className="tags">{result.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : <div className="tags empty-tags" aria-label="暂无提取标签"><span /><span /></div>}</div>
+            {result && <ConceptVisual sketch={{ ...result.concept, id: "preview", createdAt: "刚刚生成" }} compact />}
           </article>
         </aside>
       </div>
@@ -816,6 +969,81 @@ function CreatorView({
   );
 }
 
+function ConceptVisual({ sketch, compact = false }: { sketch: ConceptSketch; compact?: boolean }) {
+  return (
+    <div className={`generated-concept ${sketch.palette} form-${sketch.form} ${compact ? "compact" : ""}`}>
+      <span className="sketch-grid" />
+      <span className="sketch-shadow" />
+      <span className="sketch-body"><i /><b /></span>
+      <span className="sketch-line line-a" /><span className="sketch-line line-b" />
+      {!compact && <div><small>CONCEPT SKETCH</small><strong>{sketch.title}</strong><p>{sketch.caption}</p></div>}
+    </div>
+  );
+}
+
+function SaveGenerationDialog({ result, projects, onClose, onSave }: { result: GenerationResult; projects: Project[]; onClose: () => void; onSave: (name: string) => void }) {
+  const [target, setTarget] = useState(projects[0]?.name ?? "");
+  return (
+    <div className="project-confirm-backdrop generation-save-backdrop">
+      <section className="generation-save-dialog" role="dialog" aria-modal="true" aria-label="保存生成结果">
+        <button className="capture-close" onClick={onClose}>×</button>
+        <div className="generation-save-preview"><ConceptVisual sketch={{ ...result.concept, id: "save-preview", createdAt: "刚刚生成" }} /></div>
+        <div className="generation-save-copy">
+          <span className="drawer-eyebrow">SAVE CREATION</span><h2>将结果保存到项目</h2>
+          <p>{result.understanding}</p>
+          <label><span>目标项目</span><select value={target} onChange={(event) => setTarget(event.target.value)}>{projects.map((project) => <option key={project.name}>{project.name}</option>)}</select></label>
+          <div className="tags">{result.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+          <button className="primary-btn" disabled={!target} onClick={() => onSave(target)}>保存到项目 <span>→</span></button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProjectEditor({ project, onBack, onUpdate, notify }: { project: Project; onBack: () => void; onUpdate: (project: Project) => void; notify: (message: string) => void }) {
+  const addBlock = () => onUpdate({ ...project, textBlocks: [...project.textBlocks, { id: `text-${Date.now()}`, text: "输入说明文字", fontSize: 24, width: 320, height: 120 }] });
+  const updateBlock = (id: string, patch: Partial<EditableTextBlock>) => onUpdate({ ...project, textBlocks: project.textBlocks.map((block) => block.id === id ? { ...block, ...patch } : block) });
+  const removeBlock = (id: string) => onUpdate({ ...project, textBlocks: project.textBlocks.filter((block) => block.id !== id) });
+  const removeSketch = (id: string) => {
+    onUpdate({ ...project, sketches: project.sketches.filter((sketch) => sketch.id !== id) });
+    notify("概念草图已从项目中删除");
+  };
+  return (
+    <div className="view-panel project-editor-view">
+      <header className="editor-topbar"><button onClick={onBack}>← 返回项目</button><div><span className="eyebrow">PROJECT EDITOR</span><h1>{project.name}</h1></div><button className="primary-btn compact" onClick={() => notify("项目编辑内容已保存")}>保存修改</button></header>
+      <div className="editor-layout">
+        <section className="editor-main">
+          <div className="editor-section-heading"><div><small>01</small><h2>概念草图</h2></div><span>{project.sketches.length} 个方案</span></div>
+          <div className="editor-sketch-grid">
+            {project.sketches.map((sketch) => <article key={sketch.id}><ConceptVisual sketch={sketch} /><button onClick={() => removeSketch(sketch.id)} aria-label={`删除 ${sketch.title}`}>×</button></article>)}
+            {project.sketches.length === 0 && <div className="editor-empty"><span>✦</span><b>还没有概念草图</b><p>前往创作页面输入需求并选择此项目保存。</p></div>}
+          </div>
+          <div className="editor-section-heading"><div><small>02</small><h2>自由文字画布</h2></div><button onClick={addBlock}>＋ 添加文字框</button></div>
+          <div className="text-canvas">
+            {project.textBlocks.map((block) => (
+              <article className="resizable-text-block" key={block.id} style={{ width: block.width, minHeight: block.height }}>
+                <button className="text-block-delete" onClick={() => removeBlock(block.id)} aria-label="删除文字框">×</button>
+                <textarea value={block.text} style={{ fontSize: block.fontSize }} onChange={(event) => updateBlock(block.id, { text: event.target.value })} />
+                <div className="text-block-controls">
+                  <label>字号<input type="range" min="12" max="72" value={block.fontSize} onChange={(event) => updateBlock(block.id, { fontSize: Number(event.target.value) })} /></label>
+                  <label>宽度<input type="range" min="220" max="620" value={block.width} onChange={(event) => updateBlock(block.id, { width: Number(event.target.value) })} /></label>
+                  <label>高度<input type="range" min="90" max="360" value={block.height} onChange={(event) => updateBlock(block.id, { height: Number(event.target.value) })} /></label>
+                </div>
+              </article>
+            ))}
+            {project.textBlocks.length === 0 && <button className="add-first-text" onClick={addBlock}><span>＋</span><b>添加第一个可变文字框</b><small>文字大小、框体宽高均可独立调整</small></button>}
+          </div>
+        </section>
+        <aside className="editor-insight">
+          <span className="ai-glyph">✦</span><small>AI 需求理解</small><h2>{project.aiUnderstanding}</h2>
+          <div className="tags">{project.aiTags.length ? project.aiTags.map((tag) => <span key={tag}>{tag}</span>) : <span>暂无标签</span>}</div>
+          <p>Kimi K3 综合创作描述、特征与参考图片后生成。你可以返回创作页继续迭代并保存新版本。</p>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function ProjectsView({
   projects,
   filter,
@@ -828,6 +1056,7 @@ function ProjectsView({
   onDelete,
   onNewProject,
   notify,
+  onEdit,
 }: {
   projects: typeof allProjects;
   filter: string;
@@ -840,6 +1069,7 @@ function ProjectsView({
   onDelete: (name: string) => void;
   onNewProject: () => void;
   notify: (message: string) => void;
+  onEdit: (name: string) => void;
 }) {
   const [pendingAction, setPendingAction] = useState<{
     type: "archive" | "delete";
@@ -883,7 +1113,7 @@ function ProjectsView({
                 </>
               ) : (
                 <>
-                  <button aria-label={`编辑 ${project.name}`} onClick={() => notify(`正在编辑「${project.name}」`)}><span>✎</span>编辑</button>
+                  <button aria-label={`编辑 ${project.name}`} onClick={() => onEdit(project.name)}><span>✎</span>编辑</button>
                   <button aria-label={`归档 ${project.name}`} onClick={() => setPendingAction({ type: "archive", project })}><span>□</span>归档</button>
                   <button
                     className={favorites.includes(project.name) ? "favorite active" : "favorite"}
@@ -945,6 +1175,9 @@ function InspirationView({
   onAddToCreator,
   onAddToStyleReference,
   notify,
+  projects,
+  publishedProjectNames,
+  onUploadProject,
 }: {
   filter: string;
   setFilter: (value: string) => void;
@@ -955,8 +1188,13 @@ function InspirationView({
   onAddToCreator: (post: (typeof inspirationPosts)[number]) => void;
   onAddToStyleReference: (post: (typeof inspirationPosts)[number]) => void;
   notify: (message: string) => void;
+  projects: Project[];
+  publishedProjectNames: string[];
+  onUploadProject: (name: string) => void;
 }) {
   const [addMenu, setAddMenu] = useState("");
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState(projects[0]?.name ?? "");
   const activeMenuRef = useRef<HTMLElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const visiblePosts = filter === "为你推荐"
@@ -978,10 +1216,7 @@ function InspirationView({
         eyebrow="灵感库 · 每日更新"
         title="在别人的好想法里，找到自己的下一步。"
         action={
-          <label className="inspiration-search">
-            <span>⌕</span>
-            <input aria-label="搜索灵感" placeholder="搜索材质、形态、场景…" onKeyDown={(event) => event.key === "Enter" && notify("已为你整理相关灵感")} />
-          </label>
+          <div className="inspiration-header-actions"><label className="inspiration-search"><span>⌕</span><input aria-label="搜索灵感" placeholder="搜索材质、形态、场景…" onKeyDown={(event) => event.key === "Enter" && notify("已为你整理相关灵感")} /></label><button className="primary-btn compact" onClick={() => setUploadOpen(true)}>↑ 上传项目</button></div>
         }
       />
       <div className="inspiration-tabs" aria-label="灵感分类">
@@ -999,6 +1234,15 @@ function InspirationView({
       </div>
       <div className="masonry-scroll" ref={feedRef}>
         <section className="masonry-feed" aria-label={`${filter}灵感流`}>
+          {publishedProjectNames.map((name) => {
+            const project = projects.find((item) => item.name === name);
+            if (!project || (filter !== "为你推荐" && filter !== "产品")) return null;
+            const sketch = project.sketches[0];
+            return <article className="inspiration-card uploaded-inspiration" key={`uploaded-${name}`}>
+              {sketch ? <ConceptVisual sketch={sketch} compact /> : <div className={`inspiration-art ${project.tone} medium`}><span className={`concept-object concept-${project.pattern}`} /></div>}
+              <div className="inspiration-copy"><div><span className="uploaded-chip">用户项目</span><h2>{project.name}</h2><p>用户名称 · {project.sketches.length} 张概念草图</p></div></div>
+            </article>;
+          })}
           {visiblePosts.map((post, index) => (
             <article
               className={`inspiration-card variant-${index % 4}`}
@@ -1053,6 +1297,7 @@ function InspirationView({
         </section>
         <div className="feed-end"><span>✦</span>{filter} · 共 {visiblePosts.length} 条灵感</div>
       </div>
+      {uploadOpen && <div className="project-confirm-backdrop"><section className="upload-project-dialog" role="dialog" aria-modal="true"><button className="capture-close" onClick={() => setUploadOpen(false)}>×</button><span className="drawer-eyebrow">SHARE INSPIRATION</span><h2>上传项目到灵感</h2><p>将发布项目名称，并使用项目内最新的概念草图作为卡片封面。</p><label><span>选择项目</span><select value={uploadTarget} onChange={(event) => setUploadTarget(event.target.value)}>{projects.map((project) => <option key={project.name}>{project.name}</option>)}</select></label><button className="primary-btn" disabled={!uploadTarget} onClick={() => { onUploadProject(uploadTarget); setUploadOpen(false); }}>确认上传 <span>→</span></button></section></div>}
     </div>
   );
 }
@@ -1226,6 +1471,7 @@ function ExportView({
   const [copy, setCopy] = useState("请输入设计文案");
   const [generating, setGenerating] = useState(false);
   const [ready, setReady] = useState(false);
+  const [deck, setDeck] = useState<DeckResult | null>(null);
   const [history, setHistory] = useState([
     { id: 1, project: "便携咖啡研磨器", format: "PPT", time: "今天 10:24" },
     { id: 2, project: "折叠户外水壶", format: "PDF", time: "7 月 18 日" },
@@ -1234,10 +1480,31 @@ function ExportView({
     { id: 5, project: "便携咖啡研磨器", format: "PPT", time: "7 月 5 日" },
   ]);
 
-  const createDocument = () => {
+  const selectedProject = completedProjects.find((item) => item.name === project);
+
+  const createDocument = async () => {
+    if (!selectedProject) return;
     setGenerating(true);
     setReady(false);
-    window.setTimeout(() => {
+    try {
+      const response = await fetch("/api/kimi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "export",
+          project: {
+            name: selectedProject.name,
+            aiUnderstanding: selectedProject.aiUnderstanding,
+            aiTags: selectedProject.aiTags,
+            conceptSketches: selectedProject.sketches.map(({ title, caption, form, palette }) => ({ title, caption, form, palette })),
+          },
+          copy,
+          styleReferences: styleReferences.map((item) => `${item.title}（${item.tag}）`),
+        }),
+      });
+      const payload = await response.json() as DeckResult & { error?: string };
+      if (!response.ok) throw new Error(payload.error || "方案生成失败");
+      setDeck(payload);
       setGenerating(false);
       setReady(true);
       setHistory((current) => [
@@ -1245,7 +1512,50 @@ function ExportView({
         ...current.filter((item) => !(item.project === project && item.format === format)),
       ]);
       notify(`${format} 方案介绍已生成`);
-    }, 1200);
+    } catch (error) {
+      setGenerating(false);
+      notify(error instanceof Error ? error.message : "方案生成失败，请稍后重试");
+    }
+  };
+
+  const downloadDocument = async () => {
+    if (!deck) return;
+    if (format === "PDF") {
+      const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] || character);
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return notify("浏览器阻止了 PDF 打印窗口");
+      printWindow.opener = null;
+      printWindow.document.write(`<title>${escapeHtml(deck.title)}</title><style>body{font-family:Arial,sans-serif;padding:56px;color:#17231b}section{page-break-after:always;min-height:80vh}h1{font-size:42px}h2{font-size:30px}p,li{font-size:18px;line-height:1.7}</style><section><h1>${escapeHtml(deck.title)}</h1><p>${escapeHtml(deck.subtitle)}</p></section>${deck.slides.map((slide) => `<section><h2>${escapeHtml(slide.title)}</h2><p>${escapeHtml(slide.body)}</p><ul>${slide.bullets.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`).join("")}`);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      return;
+    }
+    const { default: PptxGenJS } = await import("pptxgenjs");
+    const pptx = new PptxGenJS();
+    pptx.layout = "LAYOUT_WIDE";
+    pptx.author = "SketchFlow";
+    pptx.subject = selectedProject?.aiUnderstanding || "AI 设计方案介绍";
+    pptx.title = deck.title;
+    pptx.company = "SketchFlow";
+    const cover = pptx.addSlide();
+    cover.background = { color: "17231B" };
+    cover.addText("SKETCHFLOW / AI DESIGN", { x: 0.7, y: 0.55, w: 5, h: 0.3, fontFace: "Aptos", fontSize: 11, color: "A8B7AC", charSpacing: 1.8 });
+    cover.addText(deck.title, { x: 0.7, y: 2.1, w: 9.8, h: 1.3, fontFace: "Microsoft YaHei", fontSize: 34, bold: true, color: "F7F4EC", margin: 0 });
+    cover.addText(deck.subtitle, { x: 0.72, y: 3.55, w: 8.7, h: 0.8, fontFace: "Microsoft YaHei", fontSize: 16, color: "C9D3CB", margin: 0, breakLine: false });
+    cover.addShape(pptx.ShapeType.arc, { x: 10.4, y: 1.35, w: 2.1, h: 2.1, rotate: 24, line: { color: "B8D84A", width: 4 }, fill: { color: "17231B", transparency: 100 } });
+    deck.slides.forEach((item, index) => {
+      const slide = pptx.addSlide();
+      slide.background = { color: index % 2 ? "F4F1E8" : "FFFFFF" };
+      slide.addText(String(index + 1).padStart(2, "0"), { x: 0.65, y: 0.45, w: 0.7, h: 0.4, fontSize: 12, color: "7B897E", bold: true });
+      slide.addText(item.title, { x: 0.7, y: 1.05, w: 5.3, h: 0.8, fontFace: "Microsoft YaHei", fontSize: 27, bold: true, color: "17231B", margin: 0 });
+      slide.addText(item.body, { x: 0.72, y: 2.0, w: 5.1, h: 1.5, fontFace: "Microsoft YaHei", fontSize: 14, color: "536057", breakLine: false, valign: "top", margin: 0 });
+      slide.addText(item.bullets.map((text) => ({ text, options: { bullet: { indent: 16 }, breakLine: true } })), { x: 6.5, y: 1.25, w: 5.6, h: 4.3, fontFace: "Microsoft YaHei", fontSize: 17, color: "26342B", breakLine: false, paraSpaceAfter: 18, margin: 0.08 });
+      slide.addShape(pptx.ShapeType.line, { x: 0.72, y: 6.75, w: 11.85, h: 0, line: { color: "CDD5CF", width: 1 } });
+      slide.addText(selectedProject?.name || project, { x: 0.72, y: 6.88, w: 4.5, h: 0.25, fontSize: 9, color: "7B897E" });
+    });
+    await pptx.writeFile({ fileName: `${project}-SketchFlow.pptx`, compression: true });
+    notify("PPT 文件已下载");
   };
 
   return (
@@ -1259,7 +1569,7 @@ function ExportView({
           <div className="export-step"><span>01</span><div><b>选择项目</b><small>选择需要整理与介绍的设计方案</small></div></div>
           <div className="project-selector">
             {completedProjects.map((item) => (
-              <button key={item.name} className={project === item.name ? "active" : ""} onClick={() => { setProject(item.name); setReady(false); }}>
+              <button key={item.name} className={project === item.name ? "active" : ""} onClick={() => { setProject(item.name); setReady(false); setDeck(null); }}>
                 <span className={`mini-project ${item.tone}`}>
                   <span className={`concept-object concept-${item.pattern}`} />
                 </span>
@@ -1291,7 +1601,7 @@ function ExportView({
           <div className="export-step"><span>03</span><div><b>选择格式并生成</b><small>内容和版式可在生成后继续调整</small></div></div>
           <div className="format-switch">
             {(["PPT", "PDF"] as const).map((item) => (
-              <button key={item} className={format === item ? "active" : ""} onClick={() => { setFormat(item); setReady(false); }}>
+              <button key={item} className={format === item ? "active" : ""} onClick={() => { setFormat(item); setReady(Boolean(deck)); }}>
                 <span>{item === "PPT" ? "▤" : "▧"}</span><b>{item}</b><small>{item === "PPT" ? "演示与提案" : "归档与分享"}</small>
               </button>
             ))}
@@ -1304,7 +1614,7 @@ function ExportView({
           <button
             className="primary-btn export-generate"
             disabled={generating || !copy.trim() || !project}
-            onClick={ready ? () => notify(`${project} 的 ${format} 文件已进入下载队列`) : createDocument}
+            onClick={ready ? downloadDocument : createDocument}
           >
             {generating ? "AI 正在编排内容…" : ready ? `下载 ${format} 文件` : `生成 ${format} 方案`}<span>{generating ? "◌" : ready ? "↓" : "→"}</span>
           </button>
