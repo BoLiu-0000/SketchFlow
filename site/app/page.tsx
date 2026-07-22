@@ -12,12 +12,17 @@ type CreationReference = {
   source: "默认" | "相册" | "灵感";
   previewUrl?: string;
 };
+type RenderMode = "auto" | "concept_sketch" | "3d_render" | "complex_render" | "campaign_poster";
 type ConceptSketch = {
   id: string;
   title: string;
   caption: string;
   form: "fold" | "cylinder" | "arch" | "module" | "sphere";
   palette: "orange" | "blue" | "green" | "rose" | "sand" | "violet";
+  outputType: Exclude<RenderMode, "auto">;
+  material: string;
+  scene: string;
+  lighting: string;
   createdAt: string;
 };
 type EditableTextBlock = {
@@ -31,6 +36,7 @@ type GenerationResult = {
   understanding: string;
   directions: string[];
   tags: string[];
+  referenceInsights: string[];
   concept: Omit<ConceptSketch, "id" | "createdAt">;
 };
 type DeckResult = {
@@ -75,7 +81,7 @@ declare global {
 }
 
 const seedSketch = (id: string, title: string, caption: string, form: ConceptSketch["form"], palette: ConceptSketch["palette"]): ConceptSketch => ({
-  id, title, caption, form, palette, createdAt: "早期方案",
+  id, title, caption, form, palette, outputType: "concept_sketch", material: "哑光复合材质", scene: "产品概念展示台", lighting: "柔和工作室光", createdAt: "早期方案",
 });
 const emptyProjectFields = { aiUnderstanding: "尚未生成 AI 需求理解", aiTags: [] as string[], sketches: [] as ConceptSketch[], textBlocks: [] as EditableTextBlock[] };
 const allProjects: Project[] = [
@@ -146,6 +152,63 @@ function renderInspirationReference(tone: string) {
   return canvas.toDataURL("image/jpeg", 0.86);
 }
 
+function loadReferenceImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("参考图片读取失败"));
+    image.src = url;
+  });
+}
+
+async function compressReferenceFile(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadReferenceImage(objectUrl);
+    const maxEdge = 1600;
+    const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("图片处理失败");
+    context.fillStyle = "#f7f5ef";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.84);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function composeReferenceBoard(urls: string[]) {
+  if (urls.length <= 1) return urls;
+  const images = await Promise.all(urls.slice(0, 4).map(loadReferenceImage));
+  const canvas = document.createElement("canvas");
+  canvas.width = 1600;
+  canvas.height = 1000;
+  const context = canvas.getContext("2d");
+  if (!context) return urls.slice(0, 1);
+  context.fillStyle = "#f4f1e9";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const columns = images.length === 2 ? 2 : 2;
+  const rows = Math.ceil(images.length / columns);
+  const gap = 20;
+  const cellWidth = (canvas.width - gap * (columns + 1)) / columns;
+  const cellHeight = (canvas.height - gap * (rows + 1)) / rows;
+  images.forEach((image, index) => {
+    const x = gap + (index % columns) * (cellWidth + gap);
+    const y = gap + Math.floor(index / columns) * (cellHeight + gap);
+    const scale = Math.min(cellWidth / image.naturalWidth, cellHeight / image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    context.fillStyle = "#fff";
+    context.fillRect(x, y, cellWidth, cellHeight);
+    context.drawImage(image, x + (cellWidth - width) / 2, y + (cellHeight - height) / 2, width, height);
+  });
+  return [canvas.toDataURL("image/jpeg", 0.82)];
+}
+
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewName>("创作");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -208,21 +271,28 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const generate = async (features: string[]) => {
+  const generate = async (features: string[], renderMode: RenderMode) => {
     if (!prompt.trim()) {
       notify("请先描述你的设计想法");
       return;
     }
     setGenerating(true);
+    let requestTimeout: number | undefined;
     try {
+      const rawReferences = creationReferences.filter((item) => item.previewUrl?.startsWith("data:image/")).slice(0, 4).map((item) => item.previewUrl as string);
+      const references = await composeReferenceBoard(rawReferences);
+      const controller = new AbortController();
+      requestTimeout = window.setTimeout(() => controller.abort(), 150000);
       const response = await fetch("/api/kimi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           mode: "create",
           prompt: prompt.trim(),
           features,
-          references: creationReferences.filter((item) => item.previewUrl?.startsWith("data:image/")).slice(0, 3).map((item) => item.previewUrl),
+          renderMode,
+          references,
         }),
       });
       const payload = await response.json() as GenerationResult & { error?: string };
@@ -230,8 +300,9 @@ export default function Home() {
       setGenerationResult(payload);
       notify("Kimi 已完成需求理解与概念草图方案");
     } catch (error) {
-      notify(error instanceof Error ? error.message : "生成失败，请稍后重试");
+      notify(error instanceof DOMException && error.name === "AbortError" ? "生成时间较长，请稍后重试" : error instanceof Error ? error.message : "生成失败，请稍后重试");
     } finally {
+      if (requestTimeout) window.clearTimeout(requestTimeout);
       setGenerating(false);
     }
   };
@@ -285,16 +356,17 @@ export default function Home() {
     notify(`已将「${post.title}」添加为导出风格参考`);
   };
 
-  const addAlbumReference = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
+  const addAlbumReference = async (file: File) => {
+    try {
+      const previewUrl = await compressReferenceFile(file);
       setCreationReferences((current) => [
         ...current,
-        { id: `album-${Date.now()}`, title: file.name, tone: "album", source: "相册", previewUrl: String(reader.result) },
+        { id: `album-${Date.now()}`, title: file.name, tone: "album", source: "相册", previewUrl },
       ]);
       notify("已从相册添加创作参考");
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "参考图片处理失败");
+    }
   };
 
   const removeCreationReference = (id: string) => {
@@ -355,7 +427,7 @@ export default function Home() {
     };
     setProjects((current) => current.map((project) => project.name === projectName ? {
       ...project,
-      aiUnderstanding: generationResult.understanding,
+      aiUnderstanding: [generationResult.understanding, ...generationResult.directions, ...generationResult.referenceInsights].join("\n"),
       aiTags: generationResult.tags,
       sketches: [sketch, ...project.sketches],
       versions: project.versions + 1,
@@ -729,7 +801,7 @@ function CreatorView({
   setPrompt: (value: string) => void;
   promptCount: number;
   generating: boolean;
-  generate: (features: string[]) => void;
+  generate: (features: string[], renderMode: RenderMode) => void;
   notify: (message: string) => void;
   onShowProjects: () => void;
   onShowProject: (name: string) => void;
@@ -742,6 +814,7 @@ function CreatorView({
   result: GenerationResult | null;
 }) {
   const [features, setFeatures] = useState(["圆形旋钮", "折叠结构"]);
+  const [renderMode, setRenderMode] = useState<RenderMode>("auto");
   const [referenceMenuOpen, setReferenceMenuOpen] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode | null>(null);
@@ -910,8 +983,9 @@ function CreatorView({
             </div>
             <div className="prompt-actions">
               <button className="ghost-btn" onClick={() => notify("AI 已帮你补全使用场景")}><span>✦</span> 帮我补充想法</button>
-              <button className="primary-btn" disabled={generating || !prompt.trim()} onClick={() => generate(features)}>
-                {generating ? "正在生成…" : "生成概念草图"}<span>{generating ? "◌" : "→"}</span>
+              <label className="render-mode-select"><span>输出类型</span><select value={renderMode} onChange={(event) => setRenderMode(event.target.value as RenderMode)}><option value="auto">智能判断</option><option value="concept_sketch">概念草图</option><option value="3d_render">3D 渲染图</option><option value="complex_render">复杂场景效果图</option><option value="campaign_poster">宣传海报</option></select></label>
+              <button className="primary-btn" disabled={generating || !prompt.trim()} onClick={() => generate(features, renderMode)}>
+                {generating ? "正在深度理解与生成…" : renderMode === "auto" ? "智能生成视觉方案" : renderMode === "concept_sketch" ? "生成概念草图" : renderMode === "3d_render" ? "生成 3D 渲染方案" : renderMode === "complex_render" ? "生成复杂效果方案" : "生成宣传海报方案"}<span>{generating ? "◌" : "→"}</span>
               </button>
             </div>
           </article>
@@ -934,7 +1008,7 @@ function CreatorView({
         <aside className="insight-column">
           <article className="ai-card">
             <div className="ai-title"><span className="ai-glyph">✦</span><div><small>KIMI K3 · AI 需求理解</small><h2>{result ? result.concept.title : "等待理解您的想法"}</h2></div><span className="confidence">{result ? "已完成" : "—"}</span></div>
-            <div className="intent-block"><small>设计方向</small><textarea aria-label="AI 设计方向" readOnly value={result ? [result.understanding, ...result.directions].join("\n\n") : "AI会自动理解您的想法"} /></div>
+            <div className="intent-block"><small>设计方向</small><textarea aria-label="AI 设计方向" readOnly value={result ? [result.understanding, ...result.directions, ...result.referenceInsights.map((item) => `参考洞察：${item}`)].join("\n\n") : "AI会自动理解您的想法"} /></div>
             <div className="tag-block"><small>提取标签</small>{result ? <div className="tags">{result.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : <div className="tags empty-tags" aria-label="暂无提取标签"><span /><span /></div>}</div>
             {result && <ConceptVisual sketch={{ ...result.concept, id: "preview", createdAt: "刚刚生成" }} compact />}
           </article>
@@ -970,13 +1044,15 @@ function CreatorView({
 }
 
 function ConceptVisual({ sketch, compact = false }: { sketch: ConceptSketch; compact?: boolean }) {
+  const outputLabels: Record<ConceptSketch["outputType"], string> = { concept_sketch: "CONCEPT SKETCH", "3d_render": "3D PRODUCT RENDER", complex_render: "SCENE VISUALIZATION", campaign_poster: "CAMPAIGN POSTER" };
   return (
-    <div className={`generated-concept ${sketch.palette} form-${sketch.form} ${compact ? "compact" : ""}`}>
+    <div className={`generated-concept ${sketch.palette} form-${sketch.form} render-${sketch.outputType} ${compact ? "compact" : ""}`}>
       <span className="sketch-grid" />
       <span className="sketch-shadow" />
       <span className="sketch-body"><i /><b /></span>
       <span className="sketch-line line-a" /><span className="sketch-line line-b" />
-      {!compact && <div><small>CONCEPT SKETCH</small><strong>{sketch.title}</strong><p>{sketch.caption}</p></div>}
+      <span className="render-atmosphere" />
+      {!compact && <div><small>{outputLabels[sketch.outputType]}</small><strong>{sketch.title}</strong><p>{sketch.caption}</p><em>{sketch.material} · {sketch.lighting}</em></div>}
     </div>
   );
 }

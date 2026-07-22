@@ -6,6 +6,7 @@ type KimiChoice = { message?: { content?: string } };
 
 const palettes = ["orange", "blue", "green", "rose", "sand", "violet"];
 const forms = ["fold", "cylinder", "arch", "module", "sphere"];
+const outputTypes = ["concept_sketch", "3d_render", "complex_render", "campaign_poster"];
 
 function getApiKey() {
   return process.env.MOONSHOT_API_KEY || process.env.OPENAI_API_KEY;
@@ -14,16 +15,39 @@ function getApiKey() {
 async function callKimi(body: Record<string, unknown>) {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("Kimi API 密钥尚未配置");
-  const response = await fetch("https://api.moonshot.cn/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "kimi-k3", reasoning_effort: "high", ...body }),
-  });
-  const data = await response.json() as { choices?: KimiChoice[]; error?: { message?: string } };
-  if (!response.ok) throw new Error(data.error?.message || "Kimi 服务暂时不可用");
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Kimi 未返回有效内容");
-  return JSON.parse(content) as Record<string, unknown>;
+  let lastError = "Kimi 服务暂时不可用";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch("https://api.moonshot.cn/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "kimi-k3", reasoning_effort: "high", ...body }),
+        signal: AbortSignal.timeout(135000),
+      });
+      const data = await response.json() as { choices?: KimiChoice[]; error?: { message?: string } };
+      if (!response.ok) {
+        lastError = data.error?.message || `Kimi 请求失败（${response.status}）`;
+        const retryable = response.status === 429 || response.status >= 500 || /photo.*overload|overload.*photo|overloaded/i.test(lastError);
+        if (retryable && attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 900));
+          continue;
+        }
+        throw new Error(lastError);
+      }
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("Kimi 未返回有效内容");
+      return JSON.parse(content) as Record<string, unknown>;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : lastError;
+      if (attempt === 0 && /fetch|network|timeout|aborted/i.test(lastError)) {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        continue;
+      }
+      break;
+    }
+  }
+  if (/photo.*overload|overload.*photo|overloaded/i.test(lastError)) throw new Error("参考图服务当前繁忙，图片已优化压缩，请稍后再次生成");
+  throw new Error(lastError);
 }
 
 export async function POST(request: Request) {
@@ -33,6 +57,7 @@ export async function POST(request: Request) {
       prompt?: string;
       features?: string[];
       references?: string[];
+      renderMode?: "auto" | "concept_sketch" | "3d_render" | "complex_render" | "campaign_poster";
       project?: Record<string, unknown>;
       copy?: string;
       styleReferences?: string[];
@@ -43,15 +68,27 @@ export async function POST(request: Request) {
       const content: Array<Record<string, unknown>> = [
         {
           type: "text",
-          text: `你是工业设计总监。根据需求、特征和参考图片，形成清晰可执行的设计理解与一张概念草图参数。只分析参考图的形态、材质、配色和构图，不识别或复述图片中的文字。\n需求：${input.prompt.slice(0, 1200)}\n特征：${(input.features || []).slice(0, 8).join("、") || "无"}`,
+          text: `你是兼具工业设计、视觉设计、3D 艺术指导和品牌传播经验的创意总监。请先完整理解需求，再决定视觉输出，不要急于套用简单造型。
+
+分析顺序：
+1. 明确目标用户、使用场景、核心任务、功能约束、情绪与品牌气质；
+2. 分别分析参考板中每张图的形态语言、比例、材质、色彩、光线、构图和可迁移元素，避免照抄；
+3. 将需求与参考图综合成 3–4 条互不重复、可以落地的设计方向；
+4. 输出模式为“${input.renderMode || "auto"}”。auto 时根据用户措辞智能选择：早期形态探索用 concept_sketch；需要真实材质和产品展示用 3d_render；包含环境、人物或空间叙事用 complex_render；强调传播、标题和品牌视觉用 campaign_poster；
+5. 生成的视觉参数必须充分描述主体、材质、场景、灯光和画面重点，达到可交付给 3D/视觉设计师继续制作的程度。
+
+用户需求：${input.prompt.slice(0, 1800)}
+用户指定特征：${(input.features || []).slice(0, 10).join("、") || "无"}
+
+只分析参考图片本身，不识别或复述图片中的文字。不要输出空泛词语。`,
         },
       ];
-      for (const url of (input.references || []).filter((item) => item.startsWith("data:image/")).slice(0, 3)) {
+      for (const url of (input.references || []).filter((item) => item.startsWith("data:image/") && item.length <= 5_500_000).slice(0, 1)) {
         content.unshift({ type: "image_url", image_url: { url } });
       }
       const result = await callKimi({
-        messages: [{ role: "system", content: "输出简洁、专业、具体的工业设计判断。不要输出 markdown。" }, { role: "user", content }],
-        max_completion_tokens: 4096,
+        messages: [{ role: "system", content: "你负责把模糊想法转化为专业、完整、具体、可执行的视觉设计方案。优先忠实理解用户意图与参考图关系，保留关键约束，禁止模板化套话和 markdown。" }, { role: "user", content }],
+        max_completion_tokens: 6500,
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -61,8 +98,9 @@ export async function POST(request: Request) {
               type: "object",
               properties: {
                 understanding: { type: "string" },
-                directions: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 3 },
-                tags: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 5 },
+                directions: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 },
+                tags: { type: "array", items: { type: "string" }, minItems: 4, maxItems: 6 },
+                referenceInsights: { type: "array", items: { type: "string" }, minItems: 0, maxItems: 4 },
                 concept: {
                   type: "object",
                   properties: {
@@ -70,12 +108,16 @@ export async function POST(request: Request) {
                     caption: { type: "string" },
                     form: { type: "string", enum: forms },
                     palette: { type: "string", enum: palettes },
+                    outputType: { type: "string", enum: outputTypes },
+                    material: { type: "string" },
+                    scene: { type: "string" },
+                    lighting: { type: "string" },
                   },
-                  required: ["title", "caption", "form", "palette"],
+                  required: ["title", "caption", "form", "palette", "outputType", "material", "scene", "lighting"],
                   additionalProperties: false,
                 },
               },
-              required: ["understanding", "directions", "tags", "concept"],
+              required: ["understanding", "directions", "tags", "referenceInsights", "concept"],
               additionalProperties: false,
             },
           },

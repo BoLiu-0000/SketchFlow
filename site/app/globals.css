@@ -4221,7 +4221,21 @@ html[data-theme="dark"] .mobile-nav button.active {
 .generated-concept > div small { display:block; color:#68756c; font-size:9px; letter-spacing:.16em; }
 .generated-concept > div strong { display:block; margin-top:4px; font-size:17px; }
 .generated-concept > div p { margin:3px 0 0; color:#59665d; font-size:11px; line-height:1.45; }
+.generated-concept > div em { display:block; margin-top:5px; color:#6f7b73; font-size:9px; font-style:normal; }
 .generated-concept.compact { min-height:210px; margin-top:16px; }
+.generated-concept.render-3d_render { background:radial-gradient(circle at 60% 28%,#fff 0,rgba(255,255,255,.48) 18%,transparent 42%),linear-gradient(155deg,#dfe7e2,#aebdb3); }
+.generated-concept.render-3d_render .sketch-body { border-width:1px; box-shadow:22px 30px 34px rgba(23,38,28,.28),inset -18px -14px 24px rgba(20,34,25,.14),inset 14px 12px 22px rgba(255,255,255,.4); }
+.generated-concept.render-3d_render .sketch-grid { opacity:.08; }
+.generated-concept.render-complex_render { background:linear-gradient(180deg,#c7d4d8 0 49%,#69796f 50% 51%,#d8d0c2 52% 100%); }
+.generated-concept.render-complex_render .render-atmosphere { position:absolute; inset:auto -8% 18% -8%; height:34%; opacity:.75; background:radial-gradient(ellipse at center,rgba(255,255,255,.76),transparent 62%); filter:blur(8px); }
+.generated-concept.render-complex_render .sketch-body { top:43%; transform:translate(-50%,-50%) scale(.92); box-shadow:34px 42px 35px rgba(25,36,29,.25); }
+.generated-concept.render-campaign_poster { background:linear-gradient(145deg,#18281e 0 62%,var(--concept-accent) 62% 100%); }
+.generated-concept.render-campaign_poster .sketch-grid { opacity:.12; filter:invert(1); }
+.generated-concept.render-campaign_poster .sketch-body { left:68%; top:38%; transform:translate(-50%,-50%) rotate(11deg) scale(.88); box-shadow:20px 24px 0 rgba(0,0,0,.18); }
+.generated-concept.render-campaign_poster > div { right:42%; color:#fff; }
+.generated-concept.render-campaign_poster > div small,.generated-concept.render-campaign_poster > div p,.generated-concept.render-campaign_poster > div em { color:#becbc2; }
+.render-mode-select { display:flex; align-items:center; gap:8px; min-height:44px; padding:0 11px; border:1px solid var(--line); border-radius:12px; color:var(--muted); background:var(--surface); font-size:10px; }
+.render-mode-select select { max-width:138px; border:0; outline:0; color:var(--text); background:transparent; font:inherit; font-size:11px; }
 
 .generation-save-backdrop { z-index:340; }
 .generation-save-dialog { position:relative; width:min(900px,92vw); display:grid; grid-template-columns:1.08fr .92fr; gap:28px; padding:24px; border-radius:28px; background:var(--surface,#fff); box-shadow:0 30px 90px rgba(15,25,18,.28); }
