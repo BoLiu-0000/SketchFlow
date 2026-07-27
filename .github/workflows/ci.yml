@@ -35,3 +35,6 @@ jobs:
 
       - name: Test production build
         run: npm test
+
+      - name: Test Netlify build
+        run: npm run build:netlify

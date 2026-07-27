@@ -52,6 +52,7 @@ test("keeps Kimi credentials server-side and enables the requested workflows", a
   assert.match(route, /input\.mode === "refine"/);
   assert.match(envExample, /^MOONSHOT_API_KEY=/m);
   assert.match(packageJson, /"pptxgenjs"/);
+  assert.match(packageJson, /"build:netlify":\s*"next build"/);
   assert.doesNotMatch(
     packageJson,
     /"[^"]+":\s*"[^"]*\b[A-Z_][A-Z0-9_]*=[^"]*"/,

@@ -46,3 +46,14 @@ npm test
 运行环境必须配置 `MOONSHOT_API_KEY`，并允许服务端访问 `https://api.moonshot.cn`。不要提交 `.env.local`、构建目录、依赖目录或打包归档；这些内容已由仓库忽略规则排除。
 
 项目已包含 `site/.openai/hosting.json`，可直接用于 OpenAI Sites 的后续版本发布。
+
+### Netlify
+
+仓库根目录的 `netlify.toml` 已为 Netlify 配置：
+
+- 基础目录：`site`
+- 构建命令：`npm run build:netlify`
+- 发布目录：`.next`
+- Node.js：24
+
+Netlify 会使用其 OpenNext 适配器部署 Next.js 页面和 `/api/kimi` 服务端路由。部署前必须在 Netlify 项目的环境变量中配置 `MOONSHOT_API_KEY`，然后重新触发生产部署。

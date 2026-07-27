@@ -13,6 +13,7 @@ npm test
 
 - `npm run dev`：启动本地开发服务器
 - `npm run build`：生成 Cloudflare Workers 兼容的生产构建
+- `npm run build:netlify`：生成 Netlify 使用的 Next.js 生产构建
 - `npm run lint`：执行静态检查
 - `npm test`：生产构建后执行端到端服务端渲染与功能边界检查
 
@@ -29,3 +30,5 @@ npm test
 - 运行时需要访问 Moonshot API
 
 `.openai/hosting.json` 是 OpenAI Sites 的部署描述文件；`vite.config.ts` 保留了 Sites 与 Cloudflare Worker 的构建集成。
+
+从 Git 仓库部署到 Netlify 时使用根目录 `netlify.toml`，Netlify 将自动从本目录执行 `npm run build:netlify`。
